@@ -3,6 +3,11 @@
 เว็บแอปแชตแบบ LINE สำหรับ Term Project วิชา Computer Network มีทั้ง direct message และ group chat
 ข้อความแชตระหว่าง client กับ server ทั้งหมดวิ่งผ่าน WebSocket
 
+## เอกสารของกลุ่ม
+
+- [docs/API.md](docs/API.md): รูปแบบ event และข้อมูลระหว่าง server กับ React
+- [TODO.txt](TODO.txt): งานที่เหลือและผู้รับผิดชอบ
+
 ## Tech stack
 
 | ส่วน | เทคโนโลยี |
@@ -18,12 +23,13 @@ Browser <-- WebSocket --> Server <-- HTTPS --> Supabase
 ## โครงสร้างโปรเจกต์
 
 ```text
-shared/src/index.ts          event และ type ที่ server กับ client ใช้ร่วมกัน
+docs/API.md                  ข้อตกลงของ socket API
+shared/src/index.ts          event, type และฟังก์ชันที่ server กับ client ใช้ร่วมกัน
 server/src/index.ts          จุดเริ่มต้นของ server
 server/src/chat-server.ts    เปิด socket และรับการเชื่อมต่อ
 server/src/state.ts          รายชื่อ client ที่ออนไลน์
 server/src/db.ts             การเชื่อมต่อ Supabase
-server/src/handlers/         ตัวจัดการ event: auth, dm, group
+server/src/handlers/         ตัวจัดการ event: auth, room, dm, group
 server/test/                 ชุดทดสอบ
 client/src/socket.ts         การเชื่อมต่อฝั่ง client
 client/src/App.tsx           หน้าเว็บหลัก
@@ -62,28 +68,6 @@ npm run check:db     # ทดสอบการเชื่อมต่อ Supab
 | WebSocket | full-duplex server ส่งข้อความเข้า client ได้ทันทีโดยไม่ต้อง poll | เส้นทางของ event และข้อความแชตทั้งหมด |
 | Socket.IO | มี rooms, ack และ reconnect ให้ในตัว | แยกห้องแชตและตอบผลของแต่ละคำขอ |
 | HTTPS | เข้ารหัสข้อมูลระหว่าง server กับฐานข้อมูล | server เรียก Supabase |
-
-## Socket events
-
-**Client ส่งถึง server** (ทุก event มี ack ตอบกลับ)
-
-| Event | Payload | Requirement |
-| --- | --- | --- |
-| `auth:login` | `{ name, password }` | R3 |
-| `dm:send` | `{ to, text }` | R5, R7 |
-| `group:create` | `{ name }` | R8 |
-| `group:join` | `{ groupId }` | R10 |
-| `group:send` | `{ groupId, text }` | R5, R11 |
-
-**Server ส่งถึง client**
-
-| Event | Payload | Requirement |
-| --- | --- | --- |
-| `users:list` | `string[]` | R4 |
-| `groups:list` | `GroupInfo[]` | R9 |
-| `message:new` | `ChatMessage` | R6, R7, R11 |
-
-รูปแบบ `roomId`: `dm:<nameA>|<nameB>` (เรียงชื่อตามตัวอักษร) หรือ `group:<groupId>`
 
 ## สถานะตาม requirement
 

@@ -1,11 +1,45 @@
-// The wire contract between client and server.
-// This package is types only: import it with `import type`.
+// The wire contract between client and server, documented in docs/API.md.
+// Change this file and that document together.
 
-export type Ack<T = void> = { ok: true; data: T } | { ok: false; error: string };
+export const LIMITS = {
+  nameMaxLength: 20,
+  passwordMinLength: 6,
+  groupNameMaxLength: 50,
+  textMaxLength: 2000,
+  historyMaxMessages: 100,
+} as const;
+
+/** Letters, marks, digits and `_`. Thai is allowed; `|` is not, because it separates DM names. */
+export const NAME_PATTERN = /^[\p{L}\p{M}\p{N}_]+$/u;
+
+export function dmRoomId(nameA: string, nameB: string): string {
+  return `dm:${[nameA, nameB].sort().join("|")}`;
+}
+
+export function groupRoomId(groupId: string): string {
+  return `group:${groupId}`;
+}
+
+export type ErrorCode =
+  | "INVALID_INPUT"
+  | "NOT_LOGGED_IN"
+  | "NAME_TAKEN"
+  | "WRONG_CREDENTIALS"
+  | "ALREADY_ONLINE"
+  | "USER_NOT_FOUND"
+  | "GROUP_NOT_FOUND"
+  | "NOT_A_MEMBER"
+  | "ALREADY_A_MEMBER"
+  | "SERVER_ERROR"
+  | "NOT_IMPLEMENTED";
+
+export type Ack<T = void> = { ok: true; data: T } | { ok: false; error: ErrorCode };
+
+type Reply<T> = (res: Ack<T>) => void;
 
 export interface ChatMessage {
   id: string;
-  /** `dm:<nameA>|<nameB>` (names sorted) or `group:<groupId>` */
+  /** Build with `dmRoomId` or `groupRoomId`. */
   roomId: string;
   sender: string;
   text: string;
@@ -21,17 +55,13 @@ export interface GroupInfo {
 }
 
 export interface ClientToServerEvents {
-  "auth:login": (
-    payload: { name: string; password: string },
-    ack: (res: Ack<{ name: string }>) => void,
-  ) => void;
-  "dm:send": (payload: { to: string; text: string }, ack: (res: Ack<ChatMessage>) => void) => void;
-  "group:create": (payload: { name: string }, ack: (res: Ack<GroupInfo>) => void) => void;
-  "group:join": (payload: { groupId: string }, ack: (res: Ack<GroupInfo>) => void) => void;
-  "group:send": (
-    payload: { groupId: string; text: string },
-    ack: (res: Ack<ChatMessage>) => void,
-  ) => void;
+  "auth:register": (payload: { name: string; password: string }, ack: Reply<void>) => void;
+  "auth:login": (payload: { name: string; password: string }, ack: Reply<{ name: string }>) => void;
+  "room:history": (payload: { roomId: string }, ack: Reply<ChatMessage[]>) => void;
+  "dm:send": (payload: { to: string; text: string }, ack: Reply<ChatMessage>) => void;
+  "group:create": (payload: { name: string }, ack: Reply<GroupInfo>) => void;
+  "group:join": (payload: { groupId: string }, ack: Reply<GroupInfo>) => void;
+  "group:send": (payload: { groupId: string; text: string }, ack: Reply<ChatMessage>) => void;
 }
 
 export interface ServerToClientEvents {

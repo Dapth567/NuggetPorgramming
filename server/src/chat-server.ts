@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import { registerAuthHandlers } from "./handlers/auth.js";
 import { registerDmHandlers } from "./handlers/dm.js";
 import { registerGroupHandlers } from "./handlers/group.js";
+import { registerRoomHandlers } from "./handlers/room.js";
 import type { ChatServer } from "./types.js";
 
 export function createChatServer() {
@@ -17,6 +18,7 @@ export function createChatServer() {
     registerAuthHandlers(io, socket);
     registerDmHandlers(io, socket);
     registerGroupHandlers(io, socket);
+    registerRoomHandlers(io, socket);
 
     socket.on("disconnect", (reason) => {
       console.log(`[disconnect] ${socket.id} (${reason})`);

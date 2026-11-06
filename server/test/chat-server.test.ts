@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import { io as connect, type Socket } from "socket.io-client";
-import type { ClientToServerEvents, ServerToClientEvents } from "@chat/shared";
+import {
+  dmRoomId,
+  NAME_PATTERN,
+  type ClientToServerEvents,
+  type ServerToClientEvents,
+} from "@chat/shared";
 import { createChatServer } from "../src/chat-server.js";
 
 const { httpServer, io } = createChatServer();
@@ -40,6 +45,16 @@ test("a request is answered through its ack", async () => {
     transports: ["websocket"],
   });
   const response = await client.emitWithAck("auth:login", { name: "a", password: "b" });
-  assert.deepEqual(response, { ok: false, error: "R3 is not implemented yet" });
+  assert.deepEqual(response, { ok: false, error: "NOT_IMPLEMENTED" });
   client.close();
+});
+
+test("a DM room id is the same from both sides", () => {
+  assert.equal(dmRoomId("bob", "alice"), "dm:alice|bob");
+  assert.equal(dmRoomId("alice", "bob"), "dm:alice|bob");
+});
+
+test("names allow Thai but not the DM separator", () => {
+  assert.match("สมชาย_1", NAME_PATTERN);
+  assert.doesNotMatch("a|b", NAME_PATTERN);
 });
