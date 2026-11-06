@@ -1,83 +1,95 @@
 # Socket Chat
 
-แอปแชตแบบ LINE สำหรับ Term Project วิชา Computer Network มีทั้ง direct message และ group chat
-เขียนด้วย Python และใช้ `socket` บน TCP โดยตรง
+เว็บแอปแชตแบบ LINE สำหรับ Term Project วิชา Computer Network มีทั้ง direct message และ group chat
+ข้อความแชตระหว่าง client กับ server ทั้งหมดวิ่งผ่าน WebSocket
+
+## Tech stack
+
+| ส่วน | เทคโนโลยี |
+| --- | --- |
+| Server | Node.js, TypeScript, Socket.IO |
+| Client | React, TypeScript, Vite, socket.io-client |
+| ฐานข้อมูล | Supabase (เข้าถึงจาก server เท่านั้น) |
+
+```text
+Browser <-- WebSocket --> Server <-- HTTPS --> Supabase
+```
 
 ## โครงสร้างโปรเจกต์
 
 ```text
-common/protocol.py    รูปแบบ packet และชนิดของ message ที่ server กับ client ใช้ร่วมกัน
-server/main.py        เปิด socket, รับการเชื่อมต่อ และแยก thread ให้แต่ละ client
-server/connection.py  ตัวแทน client หนึ่งคนฝั่ง server
-server/state.py       ข้อมูลในหน่วยความจำ: ผู้ใช้ออนไลน์ กลุ่ม ประวัติแชต
-server/handlers.py    ตัวจัดการคำขอแต่ละชนิด (R3-R11)
-client/connection.py  เชื่อมต่อ server และรับ packet ใน background thread
-client/app.py         หน้าจอ GUI
-tests/                ชุดทดสอบ
+shared/src/index.ts          event และ type ที่ server กับ client ใช้ร่วมกัน
+server/src/index.ts          จุดเริ่มต้นของ server
+server/src/chat-server.ts    เปิด socket และรับการเชื่อมต่อ
+server/src/state.ts          รายชื่อ client ที่ออนไลน์
+server/src/db.ts             การเชื่อมต่อ Supabase
+server/src/handlers/         ตัวจัดการ event: auth, dm, group
+server/test/                 ชุดทดสอบ
+client/src/socket.ts         การเชื่อมต่อฝั่ง client
+client/src/App.tsx           หน้าเว็บหลัก
 ```
 
 ## วิธีรัน
 
-ต้องมี Python 3.12 ขึ้นไป รันทุกคำสั่งจากโฟลเดอร์หลักของโปรเจกต์
+ต้องมี Node.js 22.9 ขึ้นไป
 
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
-python -m server.main                       # เปิด server ที่พอร์ต 5050
-python -m client.app                        # เปิด client บนเครื่องเดียวกับ server
-python -m client.app --host 192.168.1.10    # เปิด client จากอีกเครื่อง
-python -m unittest discover -s tests -t .   # รันชุดทดสอบ
+```bash
+npm install
+npm run dev:server   # server ที่พอร์ต 3000
+npm run dev:client   # หน้าเว็บที่พอร์ต 5173
+npm test             # รันชุดทดสอบ
+npm run check:db     # ทดสอบการเชื่อมต่อ Supabase
 ```
 
-### รันข้ามเครื่อง
+เครื่องที่รัน server ต้องมีไฟล์ `.env` คัดลอกจาก `.env.example` แล้วใส่ค่าจริง ห้าม commit ไฟล์นี้
 
-1. เปิด server แล้วอนุญาตพอร์ต TCP 5050 ใน firewall ของเครื่องนั้น
-2. หา IP ของเครื่อง server ด้วย `ipconfig`
-3. เปิด client ที่เครื่องอื่นด้วย `--host <IP>`
+### รันข้ามเครื่องใน LAN
+
+1. เปิด server และ client บนเครื่องหนึ่ง แล้วอนุญาตพอร์ต TCP 3000 และ 5173 ใน firewall
+2. หา IP ของเครื่องนั้นด้วย `ipconfig`
+3. เครื่องอื่นเปิด `http://<IP>:5173`
+
+ถ้า server อยู่คนละเครื่องกับหน้าเว็บ ให้ตั้ง `VITE_SERVER_URL` ฝั่ง client เช่น
+`VITE_SERVER_URL=http://192.168.1.10:3000`
 
 ## Protocol ที่ใช้ (R1)
 
 | Protocol | ทำไมถึงเลือก | ใช้อย่างไรในโปรเจกต์ |
 | --- | --- | --- |
-| IPv4 | ระบุที่อยู่เครื่องในเครือข่าย | client ระบุ IP ของ server ตอนเชื่อมต่อ |
-| TCP | ข้อมูลครบและเรียงลำดับ ข้อความแชตจึงไม่หายหรือสลับกัน | ทุก client ถือการเชื่อมต่อ TCP ค้างไว้กับ server |
-| Protocol ของเราเอง | TCP เป็นสายของ byte ไม่มีขอบเขตของข้อความ จึงต้องกำหนดเอง | `[ความยาว 4 byte][JSON]` ดูที่ `common/protocol.py` |
+| IPv4 | ระบุที่อยู่เครื่องในเครือข่าย | browser ใช้ IP เพื่อต่อไปยัง server |
+| TCP | ข้อมูลครบและเรียงลำดับ ข้อความแชตจึงไม่หายหรือสลับกัน | ชั้น transport ใต้ HTTP และ WebSocket |
+| HTTP | เป็นวิธีมาตรฐานในการโหลดหน้าเว็บและเริ่ม WebSocket | ส่งไฟล์หน้าเว็บ และ handshake แบบ `Upgrade` |
+| WebSocket | full-duplex server ส่งข้อความเข้า client ได้ทันทีโดยไม่ต้อง poll | เส้นทางของ event และข้อความแชตทั้งหมด |
+| Socket.IO | มี rooms, ack และ reconnect ให้ในตัว | แยกห้องแชตและตอบผลของแต่ละคำขอ |
+| HTTPS | เข้ารหัสข้อมูลระหว่าง server กับฐานข้อมูล | server เรียก Supabase |
 
-## รูปแบบ packet
+## Socket events
 
-```json
-{ "type": "dm_send", "id": 1, "data": { "to": "bob", "text": "hello" } }
-{ "type": "response", "id": 1, "ok": true, "data": {} }
-{ "type": "response", "id": 2, "ok": false, "error": "name already taken" }
-```
+**Client ส่งถึง server** (ทุก event มี ack ตอบกลับ)
 
-**Client ส่งถึง server** (server ตอบทุกคำขอด้วย `response` ที่มี `id` เดียวกัน)
-
-| Type | Data | Requirement |
+| Event | Payload | Requirement |
 | --- | --- | --- |
-| `login` | `{ name }` | R3 |
-| `dm_send` | `{ to, text }` | R5, R7 |
-| `group_create` | `{ name }` | R8 |
-| `group_join` | `{ group_id }` | R10 |
-| `group_send` | `{ group_id, text }` | R5, R11 |
+| `auth:login` | `{ name, password }` | R3 |
+| `dm:send` | `{ to, text }` | R5, R7 |
+| `group:create` | `{ name }` | R8 |
+| `group:join` | `{ groupId }` | R10 |
+| `group:send` | `{ groupId, text }` | R5, R11 |
 
 **Server ส่งถึง client**
 
-| Type | Data | Requirement |
+| Event | Payload | Requirement |
 | --- | --- | --- |
-| `users_list` | `{ names }` | R4 |
-| `groups_list` | `{ groups }` | R9 |
-| `message_new` | `{ id, room_id, sender, text, sent_at }` | R6, R7, R11 |
+| `users:list` | `string[]` | R4 |
+| `groups:list` | `GroupInfo[]` | R9 |
+| `message:new` | `ChatMessage` | R6, R7, R11 |
 
-รูปแบบ `room_id`: `dm:<nameA>|<nameB>` (เรียงชื่อตามตัวอักษร) หรือ `group:<group_id>`
+รูปแบบ `roomId`: `dm:<nameA>|<nameB>` (เรียงชื่อตามตัวอักษร) หรือ `group:<groupId>`
 
 ## สถานะตาม requirement
 
 | Requirement | สถานะ |
 | --- | --- |
-| R1 client-server ข้ามเครื่อง | วางโครงแล้ว ยังไม่ได้ทดสอบข้ามเครื่องจริง |
-| R2 ใช้ socket เท่านั้น | วางโครงแล้ว |
-| R3-R11 | ยังไม่ทำ (มี `TODO` ใน `server/handlers.py`) |
+| R1 สถาปัตยกรรม client-server ข้ามเครื่อง | วางโครงแล้ว ยังไม่ได้ทดสอบข้ามเครื่องจริง |
+| R2 ใช้ socket เท่านั้น | วางโครงแล้ว (บังคับ `transports: ["websocket"]`) |
+| R3-R11 | ยังไม่ทำ (มี `TODO` ใน `server/src/handlers/`) |
 | Special points 1-4 | ยังไม่ได้เลือก (ต้องมี AI อย่างน้อย 1 ข้อ) |
