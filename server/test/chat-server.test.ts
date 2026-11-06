@@ -44,7 +44,7 @@ test("a request is answered through its ack", async () => {
   const client: Socket<ServerToClientEvents, ClientToServerEvents> = connect(url, {
     transports: ["websocket"],
   });
-  const response = await client.emitWithAck("auth:login", { name: "a", password: "b" });
+  const response = await client.emitWithAck("dm:send", { to: "a", text: "b" });
   assert.deepEqual(response, { ok: false, error: "NOT_IMPLEMENTED" });
   client.close();
 });

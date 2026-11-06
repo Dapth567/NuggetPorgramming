@@ -73,6 +73,7 @@ React component
 | `FILES.md` | มีแล้ว | เอกสารนี้ แผนผังไฟล์และหน้าที่ของแต่ละไฟล์ | - |
 | `docs/API.md` | มีแล้ว | event, payload, error code ต้องแก้คู่กับ `shared/src/index.ts` | R2-R11 |
 | `docs/ARCHITECTURE.md` | ยังไม่มี | system architecture diagram (client 2 เครื่องขึ้นไป + server + Supabase) พร้อม IP และพอร์ตที่ใช้ตอน demo และคำอธิบาย protocol ว่าใช้อะไร ทำไม ใช้อย่างไร ใช้ทำสไลด์ R1 | R1 |
+| `docs/SETUP_SUPABASE.md` | มีแล้ว | วิธีตั้งค่า Supabase และ `.env` (login ไม่ใช้ Supabase Auth ไม่ใช้อีเมล) | R3 |
 | `docs/DATABASE.md` | ยังไม่มี | อธิบายตาราง `users`, `groups`, `group_members`, `messages` ว่าแต่ละคอลัมน์เก็บอะไร | R3, R7-R11 |
 | `docs/SPECIAL_POINTS.md` | ยังไม่มี | special point ที่เลือก 4 ข้อ คำอธิบาย ชื่อโมเดล AI และแหล่งอ้างอิง (สไลด์บังคับให้มี) | Part 3 |
 | `docs/DEMO.md` | ยังไม่มี | ขั้นตอน demo ทีละข้อ R1-R11 ว่าใครกดอะไรบนเครื่องไหน และ checklist ก่อนวัน demo | ทุกข้อ |
@@ -84,7 +85,7 @@ React component
 
 | ไฟล์ | สถานะ | หน้าที่ | Requirement |
 | --- | --- | --- | --- |
-| `supabase/schema.sql` | ยังไม่มี | SQL สร้างตารางทั้ง 4 ตาราง ให้ตรงกับใน Supabase จริง ใช้สร้างใหม่ได้ถ้าโปรเจกต์ Supabase หาย | R3, R7-R11 |
+| `supabase/schema.sql` | มีแล้ว | SQL สร้างตารางทั้ง 4 ตาราง ให้ตรงกับใน Supabase จริง ใช้สร้างใหม่ได้ถ้าโปรเจกต์ Supabase หาย | R3, R7-R11 |
 
 คอลัมน์ที่คาดว่าต้องมี (คนตั้งตารางต้องตรวจกับ Supabase จริงแล้วแก้ให้ตรง)
 
@@ -113,11 +114,11 @@ React component
 | `server/src/types.ts` | มีแล้ว | type `ChatServer`, `ChatSocket`, `SocketData` และค่า `NOT_IMPLEMENTED` | - |
 | `server/src/db.ts` | มีแล้ว | สร้าง Supabase client ใช้ได้เฉพาะในโฟลเดอร์ `repo/` | - |
 | `server/src/check-db.ts` | มีแล้ว | สคริปต์ `npm run check:db` ตรวจว่าต่อทุกตารางได้ | - |
-| `server/src/validate.ts` | ยังไม่มี | ฟังก์ชันตรวจข้อมูลตามกฎใน `LIMITS` และ `NAME_PATTERN` (ชื่อ, รหัสผ่าน, ชื่อกลุ่ม, ข้อความ) และ `requireLogin(socket)` ที่คืนชื่อผู้ใช้หรือบอกว่าต้องตอบ `NOT_LOGGED_IN` ทุก handler ใช้ไฟล์นี้ ห้ามเขียนตรวจเองในแต่ละ handler | R3, R6-R11 |
-| `server/src/password.ts` | ยังไม่มี | `hashPassword()` และ `verifyPassword()` ด้วย `node:crypto` (scrypt) ไม่ต้องลง library เพิ่ม ห้ามเก็บรหัสผ่านตรง ๆ | R3 |
-| `server/src/broadcast.ts` | ยังไม่มี | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว และ `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก ใช้ร่วมกันระหว่าง `auth.ts` กับ `group.ts` | R4, R9 |
-| `server/src/repo/users.ts` | ยังไม่มี | `createUser()`, `findUser()`, `userExists()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
-| `server/src/repo/groups.ts` | ยังไม่มี | `createGroup()` (ใส่ผู้สร้างเป็นสมาชิกคนเดียว), `listGroups()` (รวมรายชื่อสมาชิก), `findGroup()`, `addMember()`, `isMember()`, `groupsOf(name)` บนตาราง `groups` และ `group_members` | R8-R11 |
+| `server/src/validate.ts` | มีแล้ว | ฟังก์ชันตรวจข้อมูลตามกฎใน `LIMITS` และ `NAME_PATTERN` (ชื่อ, รหัสผ่าน, ชื่อกลุ่ม, ข้อความ) และ `requireLogin(socket)` ที่คืนชื่อผู้ใช้หรือบอกว่าต้องตอบ `NOT_LOGGED_IN` ทุก handler ใช้ไฟล์นี้ ห้ามเขียนตรวจเองในแต่ละ handler | R3, R6-R11 |
+| `server/src/password.ts` | มีแล้ว | `hashPassword()` และ `verifyPassword()` ด้วย `node:crypto` (scrypt) ไม่ต้องลง library เพิ่ม ห้ามเก็บรหัสผ่านตรง ๆ | R3 |
+| `server/src/broadcast.ts` | มีแล้ว | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว และ `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก ใช้ร่วมกันระหว่าง `auth.ts` กับ `group.ts` | R4, R9 |
+| `server/src/repo/users.ts` | มีแล้ว | `createUser()`, `findUser()`, `userExists()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
+| `server/src/repo/groups.ts` | มีบางส่วน (`listGroups`, `groupsOf` ที่ login ใช้ เพิ่มที่เหลือในไฟล์นี้) | `createGroup()` (ใส่ผู้สร้างเป็นสมาชิกคนเดียว), `listGroups()` (รวมรายชื่อสมาชิก), `findGroup()`, `addMember()`, `isMember()`, `groupsOf(name)` บนตาราง `groups` และ `group_members` | R8-R11 |
 | `server/src/repo/messages.ts` | ยังไม่มี | `saveMessage()` และ `roomHistory(roomId, limit)` บนตาราง `messages` คืนเป็น `ChatMessage` | R5, R7, R11 |
 
 ### `server/src/handlers/` ตัวรับ event
@@ -126,7 +127,7 @@ React component
 
 | ไฟล์ | สถานะ | Event ที่รับ | สิ่งที่ต้องทำ | Requirement |
 | --- | --- | --- | --- | --- |
-| `auth.ts` | มีแล้ว (TODO) | `auth:register`, `auth:login`, `disconnect` | register: ตรวจ input, ชื่อซ้ำตอบ `NAME_TAKEN`, เก็บ hash<br>login: ตรวจรหัส (ผิดหรือไม่มีชื่อตอบ `WRONG_CREDENTIALS` เหมือนกัน), ชื่อออนไลน์อยู่แล้วตอบ `ALREADY_ONLINE`, ตั้ง `socket.data.name`, ใส่ `state.onlineUsers`, ให้ socket เข้าห้องทุกกลุ่มที่เป็นสมาชิก, ตอบ ack, `sendUsersList`, `sendGroupsList` ให้คนนี้<br>disconnect: ลบออกจาก `onlineUsers` แล้ว `sendUsersList` | R3, R4 |
+| `auth.ts` | มีแล้ว (R3, R4 เสร็จ) | `auth:register`, `auth:login`, `disconnect` | register: ตรวจ input, ชื่อซ้ำตอบ `NAME_TAKEN`, เก็บ hash<br>login: ตรวจรหัส (ผิดหรือไม่มีชื่อตอบ `WRONG_CREDENTIALS` เหมือนกัน), ชื่อออนไลน์อยู่แล้วตอบ `ALREADY_ONLINE`, ตั้ง `socket.data.name`, ใส่ `state.onlineUsers`, ให้ socket เข้าห้องทุกกลุ่มที่เป็นสมาชิก, ตอบ ack, `sendUsersList`, `sendGroupsList` ให้คนนี้<br>disconnect: ลบออกจาก `onlineUsers` แล้ว `sendUsersList` | R3, R4 |
 | `room.ts` | มีแล้ว (TODO) | `room:history` | ห้อง DM ต้องมีชื่อผู้ขอใน `roomId` ห้องกลุ่มผู้ขอต้องเป็นสมาชิก ไม่ผ่านตอบ `NOT_A_MEMBER` แล้วคืนข้อความล่าสุดไม่เกิน 100 ข้อความ เรียงเก่าไปใหม่ | R5, R7, R11 |
 | `dm.ts` | มีแล้ว (TODO) | `dm:send` | ผู้รับต้องมีบัญชี (ไม่มีตอบ `USER_NOT_FOUND`) ออฟไลน์ก็ส่งได้ บันทึกด้วย `roomId = dmRoomId(ผู้ส่ง, ผู้รับ)` แล้วส่ง `message:new` ให้ socket ของผู้ส่งและผู้รับเท่านั้น (หา socket id จาก `state.onlineUsers`) | R5, R7 |
 | `group.ts` | มีแล้ว (TODO) | `group:create`, `group:join`, `group:send` | create: ผู้สร้างเป็นสมาชิกคนเดียว ห้ามรับรายชื่อคนอื่น, `socket.join(groupRoomId(id))`, `sendGroupsList` ให้ทุกคน<br>join: เพิ่มเฉพาะตัวผู้ขอเอง ไม่มีวิธีเพิ่มคนอื่น, เป็นสมาชิกแล้วตอบ `ALREADY_A_MEMBER`, `socket.join`, `sendGroupsList` ให้ทุกคน<br>send: ไม่ใช่สมาชิกตอบ `NOT_A_MEMBER`, บันทึก, ส่ง `message:new` เข้า room ของกลุ่มเท่านั้น | R5, R8-R11 |
@@ -148,8 +149,8 @@ React component
 | ไฟล์ | สถานะ | ทดสอบอะไร | Requirement |
 | --- | --- | --- | --- |
 | `server/test/chat-server.test.ts` | มีแล้ว | ต่อได้ด้วย websocket, ปฏิเสธ polling, ack ทำงาน, `dmRoomId`, `NAME_PATTERN` | R2 |
-| `server/test/helpers.ts` | ยังไม่มี | เปิด server ชั่วคราว สร้าง client ที่ login แล้ว สุ่มชื่อผู้ใช้ทดสอบ ใช้ร่วมกันทุกไฟล์ทดสอบ | - |
-| `server/test/auth.test.ts` | ยังไม่มี | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด | R3, R4 |
+| `server/test/helpers.ts` | มีแล้ว | เปิด server ชั่วคราว สร้าง client ที่ login แล้ว สุ่มชื่อผู้ใช้ทดสอบ ใช้ร่วมกันทุกไฟล์ทดสอบ | - |
+| `server/test/auth.test.ts` | มีแล้ว | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด | R3, R4 |
 | `server/test/dm.test.ts` | ยังไม่มี | ผู้ส่งและผู้รับได้ `message:new` แต่คนที่สามไม่ได้ | R5, R7 |
 | `server/test/group.test.ts` | ยังไม่มี | สร้างกลุ่มแล้วมีสมาชิกคนเดียว, ทุกคนเห็นกลุ่ม, เข้ากลุ่มเอง, คนนอกกลุ่มส่งและรับข้อความไม่ได้ | R8-R11 |
 | `server/test/room.test.ts` | ยังไม่มี | คนนอกห้องโหลดประวัติไม่ได้, ประวัติเรียงเก่าไปใหม่ | R5, R7, R11 |
@@ -163,7 +164,7 @@ React component
 | `client/src/main.tsx` | มีแล้ว | render `<App />` ไม่ต้องแก้ นอกจาก import `styles.css` | - |
 | `client/src/socket.ts` | มีแล้ว | การเชื่อมต่อ Socket.IO อันเดียวของทั้งเว็บ (websocket เท่านั้น) ห้ามสร้างการเชื่อมต่อใหม่ที่อื่น | R1, R2 |
 | `client/src/App.tsx` | มีแล้ว (TODO) | เรียก `useChat()` แล้วเลือกหน้า: ยังไม่ login แสดง `LoginPage` login แล้วแสดง `ChatPage` ตอนนี้แสดงแค่สถานะการเชื่อมต่อ | - |
-| `client/src/useChat.ts` | ยังไม่มี | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack | R3-R11 |
+| `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack | R3-R11 |
 | `client/src/errors.ts` | ยังไม่มี | แปลง `ErrorCode` เป็นข้อความภาษาไทยที่แสดงให้ผู้ใช้ | - |
 | `client/src/styles.css` | ยังไม่มี | style ทั้งเว็บ ไฟล์เดียว ถ้ายาวมากค่อยแยกตาม component | R6 |
 | `client/src/pages/LoginPage.tsx` | ยังไม่มี | ฟอร์มชื่อและรหัสผ่าน ปุ่มสมัครและปุ่ม login แสดง error เช่นชื่อซ้ำ | R3 |

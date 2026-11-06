@@ -1,72 +1,25 @@
-﻿import { useEffect, useRef, useState, type FormEvent } from "react";
-import {
-  dmRoomId,
-  groupRoomId,
-  LIMITS,
-  type ChatMessage,
-  type ErrorCode,
-  type GroupInfo,
-} from "@chat/shared";
-import { socket } from "./socket";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { dmRoomId, groupRoomId, LIMITS, type ErrorCode } from "@chat/shared";
+import { ERROR_TEXT } from "./errors";
+import { useChat, type ChatApi } from "./useChat";
 
 type Room = { kind: "dm"; name: string } | { kind: "group"; id: string };
 
-const ERROR_TEXT: Record<ErrorCode, string> = {
-  INVALID_INPUT: "Invalid input",
-  NOT_LOGGED_IN: "You are not logged in",
-  NAME_TAKEN: "This name is already taken",
-  WRONG_CREDENTIALS: "Wrong username or password",
-  ALREADY_ONLINE: "This account is already online",
-  USER_NOT_FOUND: "User not found",
-  GROUP_NOT_FOUND: "Group not found",
-  NOT_A_MEMBER: "You are not a member of this group",
-  ALREADY_A_MEMBER: "You are already a member of this group",
-  SERVER_ERROR: "Server error",
-  NOT_IMPLEMENTED: "This feature is not available yet",
-};
-
-function useConnected() {
-  const [connected, setConnected] = useState(socket.connected);
-  useEffect(() => {
-    const on = () => setConnected(true);
-    const off = () => setConnected(false);
-    socket.on("connect", on);
-    socket.on("disconnect", off);
-    return () => {
-      socket.off("connect", on);
-      socket.off("disconnect", off);
-    };
-  }, []);
-  return connected;
-}
-
-function LoginScreen({ connected, onLogin }: { connected: boolean; onLogin: (name: string) => void }) {
+function LoginScreen({ chat }: { chat: ChatApi }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const login = () => {
-    socket.emit("auth:login", { name, password }, (res) => {
-      setBusy(false);
-      if (res.ok) onLogin(res.data.name);
-      else setError(ERROR_TEXT[res.error]);
-    });
-  };
-
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setBusy(true);
-    if (mode === "login") return login();
-    socket.emit("auth:register", { name, password }, (res) => {
-      if (res.ok) login();
-      else {
-        setBusy(false);
-        setError(ERROR_TEXT[res.error]);
-      }
-    });
+    let failure = mode === "register" ? await chat.register(name, password) : null;
+    if (!failure) failure = await chat.login(name, password);
+    setBusy(false);
+    if (failure) setError(ERROR_TEXT[failure]);
   };
 
   return (
@@ -87,7 +40,7 @@ function LoginScreen({ connected, onLogin }: { connected: boolean; onLogin: (nam
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <p className="error">{error}</p>}
-        <button className="primary" disabled={!connected || busy || !name || !password}>
+        <button className="primary" disabled={!chat.connected || busy || !name || !password}>
           {mode === "login" ? "Log in" : "Sign up"}
         </button>
         <button
@@ -100,7 +53,7 @@ function LoginScreen({ connected, onLogin }: { connected: boolean; onLogin: (nam
         >
           {mode === "login" ? "No account? Sign up" : "Have an account? Log in"}
         </button>
-        {!connected && <p className="hint">Connecting to server...</p>}
+        {!chat.connected && <p className="hint">Connecting to server...</p>}
       </form>
     </div>
   );
@@ -114,27 +67,9 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Dev-only sample data so the chat screen can be viewed without a server.
-const PREVIEW_ME = "you";
-const PREVIEW_GROUP: GroupInfo = { id: "g1", name: "Study group", createdBy: "alice", members: ["alice", "you", "bob"] };
-const at = (m: number) => new Date(Date.now() - m * 60000).toISOString();
-const PREVIEW_MESSAGES: Record<string, ChatMessage[]> = {
-  [dmRoomId(PREVIEW_ME, "alice")]: [
-    { id: "1", roomId: dmRoomId(PREVIEW_ME, "alice"), sender: "alice", text: "Hi! How is the project going?", sentAt: at(9) },
-    { id: "2", roomId: dmRoomId(PREVIEW_ME, "alice"), sender: PREVIEW_ME, text: "The UI is done, I just need to connect the server", sentAt: at(7) },
-    { id: "3", roomId: dmRoomId(PREVIEW_ME, "alice"), sender: "alice", text: "Great!", sentAt: at(5) },
-  ],
-  [groupRoomId("g1")]: [
-    { id: "4", roomId: groupRoomId("g1"), sender: "bob", text: "What time is the presentation rehearsal tomorrow?", sentAt: at(3) },
-    { id: "5", roomId: groupRoomId("g1"), sender: PREVIEW_ME, text: "2 PM", sentAt: at(2) },
-  ],
-};
-
-function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
-  const [users, setUsers] = useState<string[]>(preview ? [me, "alice", "bob"] : []);
-  const [groups, setGroups] = useState<GroupInfo[]>(preview ? [PREVIEW_GROUP] : []);
+function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
+  const { users, groups, messagesByRoom, openRoom } = chat;
   const [room, setRoom] = useState<Room | null>(null);
-  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(preview ? PREVIEW_MESSAGES : {});
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -142,75 +77,37 @@ function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
   const roomId = room ? (room.kind === "dm" ? dmRoomId(me, room.name) : groupRoomId(room.id)) : null;
   const group = room?.kind === "group" ? groups.find((g) => g.id === room.id) : undefined;
   const isMember = room?.kind === "dm" || group?.members.includes(me) === true;
+  const current = roomId ? (messagesByRoom[roomId] ?? []) : [];
 
-  useEffect(() => {
-    if (preview) return;
-    const onUsers = (names: string[]) => setUsers(names);
-    const onGroups = (list: GroupInfo[]) => setGroups(list);
-    const onMessage = (m: ChatMessage) =>
-      setMessages((prev) => {
-        const list = prev[m.roomId] ?? [];
-        return list.some((x) => x.id === m.id) ? prev : { ...prev, [m.roomId]: [...list, m] };
-      });
-    socket.on("users:list", onUsers);
-    socket.on("groups:list", onGroups);
-    socket.on("message:new", onMessage);
-    return () => {
-      socket.off("users:list", onUsers);
-      socket.off("groups:list", onGroups);
-      socket.off("message:new", onMessage);
-    };
-  }, [preview]);
-
-  useEffect(() => {
-    if (preview || !roomId || !isMember) return;
-    socket.emit("room:history", { roomId }, (res) => {
-      if (res.ok) setMessages((prev) => ({ ...prev, [roomId]: res.data }));
-    });
-  }, [preview, roomId, isMember]);
-
-  const current = roomId ? (messages[roomId] ?? []) : [];
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [current.length, roomId]);
-
-  const report = (error: ErrorCode) => {
+  const report = (error: ErrorCode | null) => {
+    if (!error) return;
     setNotice(ERROR_TEXT[error]);
     setTimeout(() => setNotice(""), 3000);
   };
 
-  const send = (e: FormEvent) => {
+  useEffect(() => {
+    if (!roomId || !isMember) return;
+    openRoom(roomId).then(report);
+  }, [roomId, isMember, openRoom]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: "end" });
+  }, [current.length, roomId]);
+
+  const send = async (e: FormEvent) => {
     e.preventDefault();
     const body = text.trim();
     if (!room || !body) return;
-    const done = (res: { ok: boolean; error?: ErrorCode }) => {
-      if (!res.ok && res.error) report(res.error);
-    };
     setText("");
-    if (preview && roomId) {
-      const m: ChatMessage = { id: String(Date.now()), roomId, sender: me, text: body, sentAt: new Date().toISOString() };
-      setMessages((prev) => ({ ...prev, [roomId]: [...(prev[roomId] ?? []), m] }));
-      return;
-    }
-    if (room.kind === "dm") socket.emit("dm:send", { to: room.name, text: body }, done);
-    else socket.emit("group:send", { groupId: room.id, text: body }, done);
+    report(room.kind === "dm" ? await chat.sendDm(room.name, body) : await chat.sendGroup(room.id, body));
   };
 
-  const createGroup = () => {
-    if (preview) return;
+  const createGroup = async () => {
     const name = window.prompt("Group name")?.trim();
     if (!name) return;
-    socket.emit("group:create", { name }, (res) => {
-      if (res.ok) setRoom({ kind: "group", id: res.data.id });
-      else report(res.error);
-    });
-  };
-
-  const joinGroup = (groupId: string) => {
-    if (preview) return;
-    socket.emit("group:join", { groupId }, (res) => {
-      if (!res.ok) report(res.error);
-    });
+    const res = await chat.createGroup(name);
+    if ("groupId" in res) setRoom({ kind: "group", id: res.groupId });
+    else report(res.error);
   };
 
   const title = room?.kind === "dm" ? room.name : group?.name;
@@ -222,14 +119,22 @@ function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
         <header className="sidebar-head">
           <Avatar label={me} />
           <strong>{me}</strong>
+          <button className="small logout" onClick={chat.logout}>
+            Log out
+          </button>
         </header>
         <div className="list">
           <div className="section">
             <span>Online ({users.length})</span>
           </div>
-          {users
-            .filter((n) => n !== me)
-            .map((name) => (
+          {users.map((name) =>
+            name === me ? (
+              <div key={name} className="item self">
+                <Avatar label={name} />
+                <span className="item-name">{name} (you)</span>
+                <span className="dot" />
+              </div>
+            ) : (
               <button
                 key={name}
                 className={room?.kind === "dm" && room.name === name ? "item active" : "item"}
@@ -239,7 +144,8 @@ function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
                 <span className="item-name">{name}</span>
                 <span className="dot" />
               </button>
-            ))}
+            ),
+          )}
           <div className="section">
             <span>Groups</span>
             <button className="small" onClick={createGroup}>
@@ -297,7 +203,10 @@ function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
               </form>
             ) : (
               <div className="composer join">
-                <button className="primary" onClick={() => joinGroup(room.kind === "group" ? room.id : "")}>
+                <button
+                  className="primary"
+                  onClick={async () => room.kind === "group" && report(await chat.joinGroup(room.id))}
+                >
                   Join group
                 </button>
               </div>
@@ -310,14 +219,9 @@ function Chat({ me, preview = false }: { me: string; preview?: boolean }) {
 }
 
 export function App() {
-  const connected = useConnected();
+  // `?preview` skips login and uses sample data. It only works in `npm run dev`.
   const preview = import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview");
-  const [me, setMe] = useState<string | null>(null);
+  const chat = useChat(preview);
 
-  useEffect(() => {
-    if (!connected && !preview) setMe(null);
-  }, [connected, preview]);
-
-  if (preview) return <Chat me={PREVIEW_ME} preview />;
-  return me ? <Chat me={me} /> : <LoginScreen connected={connected} onLogin={setMe} />;
+  return chat.me ? <ChatScreen chat={chat} me={chat.me} /> : <LoginScreen chat={chat} />;
 }

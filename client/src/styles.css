@@ -72,7 +72,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; text-align: left; }
 .item:hover, .item.active { background: var(--raised); }
 .item.active { box-shadow: inset 3px 0 0 var(--accent); }
+.item.self { cursor: default; }
 .item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logout { margin-left: auto; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
 .count { font-size: 0.8rem; color: var(--muted); }
 
@@ -121,6 +123,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 700px) {
   .sidebar { width: 100px; }
-  .item-name, .count, .sidebar-head strong, .section span { display: none; }
+  .logout, .item-name, .count, .sidebar-head strong, .section span { display: none; }
   .item, .sidebar-head { justify-content: center; padding-inline: 8px; }
 }
