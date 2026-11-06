@@ -1,8 +1,10 @@
 import type { AddressInfo } from "node:net";
 import { randomBytes } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { io as connect, type Socket } from "socket.io-client";
-import type { ClientToServerEvents, ServerToClientEvents } from "@chat/shared";
+import type { ChatMessage, ClientToServerEvents, ServerToClientEvents } from "@chat/shared";
 import { createChatServer } from "../src/chat-server.js";
+import { db } from "../src/db.js";
 
 export type TestClient = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -29,14 +31,26 @@ export function randomName(prefix = "t"): string {
 
 export const PASSWORD = "secret123";
 
+/** Register a new user without logging in, for tests that must prepare data before login. */
+export async function registerNewUser(url: string, name = randomName()) {
+  const client = await connectClient(url);
+  const registered = await client.emitWithAck("auth:register", { name, password: PASSWORD });
+  if (!registered.ok) throw new Error(`register failed: ${registered.error}`);
+  return { client, name };
+}
+
+export async function login(client: TestClient, name: string) {
+  const res = await client.emitWithAck("auth:login", { name, password: PASSWORD });
+  if (!res.ok) throw new Error(`login failed: ${res.error}`);
+}
+
 /** Register and log in a new user; resolves to the client and the first `users:list` it received. */
 export async function loginNewUser(url: string, name = randomName()) {
   const client = await connectClient(url);
   const firstUsers = new Promise<string[]>((resolve) => client.once("users:list", resolve));
   const registered = await client.emitWithAck("auth:register", { name, password: PASSWORD });
   if (!registered.ok) throw new Error(`register failed: ${registered.error}`);
-  const login = await client.emitWithAck("auth:login", { name, password: PASSWORD });
-  if (!login.ok) throw new Error(`login failed: ${login.error}`);
+  await login(client, name);
   return { client, name, firstUsers: await firstUsers };
 }
 
@@ -50,4 +64,33 @@ export function nextUsersList(client: TestClient, predicate: (names: string[]) =
     };
     client.on("users:list", onList);
   });
+}
+
+export function nextMessage(client: TestClient) {
+  return new Promise<ChatMessage>((resolve) => client.once("message:new", resolve));
+}
+
+/** Collect every `message:new`, to prove a client received nothing. */
+export function recordMessages(client: TestClient) {
+  const received: ChatMessage[] = [];
+  client.on("message:new", (message) => received.push(message));
+  return received;
+}
+
+/** Long enough for a wrongly routed `message:new` to arrive. */
+export const waitForStrayMessages = () => delay(200);
+
+/** Tests use the real database, so remove their rows or they appear in the real app. */
+export async function deleteTestData(names: string[], groupIds: string[] = []) {
+  const steps = [
+    db.from("messages").delete().in("sender", names),
+    db.from("groups").delete().in("id", groupIds),
+    db.from("group_members").delete().in("user_name", names),
+  ];
+  for (const step of steps) {
+    const { error } = await step;
+    if (error) throw new Error(error.message);
+  }
+  const { error } = await db.from("users").delete().in("name", names);
+  if (error) throw new Error(error.message);
 }

@@ -27,6 +27,13 @@ export function isValidText(value: unknown): value is string {
   );
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Postgres rejects a malformed uuid with an error, so catch it here as bad input. */
+export function isValidGroupId(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
 /** The logged-in name, or `null` when the handler must answer NOT_LOGGED_IN. */
 export function requireLogin(socket: ChatSocket): string | null {
   return socket.data.name ?? null;

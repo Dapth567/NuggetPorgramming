@@ -88,7 +88,14 @@ export function useChat(preview = false) {
     async (roomId: string): Promise<Result> => {
       if (preview) return null;
       const res = await socket.emitWithAck("room:history", { roomId });
-      if (res.ok) setMessagesByRoom((prev) => ({ ...prev, [roomId]: res.data }));
+      if (res.ok) {
+        // Keep anything `message:new` delivered while the history was loading.
+        setMessagesByRoom((prev) => {
+          const loaded = new Set(res.data.map((m) => m.id));
+          const newer = (prev[roomId] ?? []).filter((m) => !loaded.has(m.id));
+          return { ...prev, [roomId]: [...res.data, ...newer] };
+        });
+      }
       return toResult(res);
     },
     [preview],
