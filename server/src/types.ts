@@ -11,6 +11,4 @@ type NoEvents = Record<string, never>;
 export type ChatServer = Server<ClientToServerEvents, ServerToClientEvents, NoEvents, SocketData>;
 export type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, NoEvents, SocketData>;
 
-export function notImplemented(requirement: string): Ack<never> {
-  return { ok: false, error: `${requirement} is not implemented yet` };
-}
+export const NOT_IMPLEMENTED: Ack<never> = { ok: false, error: "NOT_IMPLEMENTED" };
