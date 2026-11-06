@@ -23,6 +23,53 @@ export async function listGroups(): Promise<GroupInfo[]> {
   }));
 }
 
+/** Creates a group whose only member is its creator (R8). */
+export async function createGroup(name: string, createdBy: string): Promise<GroupInfo> {
+  const { data, error } = await db
+    .from("groups")
+    .insert({ name, created_by: createdBy })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  const id = String(data.id);
+  await addMember(id, createdBy);
+  return { id, name, createdBy, members: [createdBy] };
+}
+
+export async function findGroup(id: string): Promise<GroupInfo | null> {
+  const [group, members] = await Promise.all([
+    db.from("groups").select("id, name, created_by").eq("id", id).maybeSingle(),
+    db.from("group_members").select("user_name").eq("group_id", id).order("joined_at"),
+  ]);
+  if (group.error) throw new Error(group.error.message);
+  if (members.error) throw new Error(members.error.message);
+  if (!group.data) return null;
+
+  return {
+    id: String(group.data.id),
+    name: group.data.name,
+    createdBy: group.data.created_by,
+    members: members.data.map((row) => row.user_name),
+  };
+}
+
+export async function addMember(groupId: string, name: string): Promise<void> {
+  const { error } = await db.from("group_members").insert({ group_id: groupId, user_name: name });
+  if (error) throw new Error(error.message);
+}
+
+export async function isMember(groupId: string, name: string): Promise<boolean> {
+  const { data, error } = await db
+    .from("group_members")
+    .select("group_id")
+    .eq("group_id", groupId)
+    .eq("user_name", name)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data !== null;
+}
+
 /** Ids of the groups this user belongs to. */
 export async function groupsOf(name: string): Promise<string[]> {
   const { data, error } = await db.from("group_members").select("group_id").eq("user_name", name);
