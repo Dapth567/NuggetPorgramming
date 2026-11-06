@@ -130,7 +130,7 @@ React component
 | `auth.ts` | มีแล้ว (R3, R4 เสร็จ) | `auth:register`, `auth:login`, `disconnect` | register: ตรวจ input, ชื่อซ้ำตอบ `NAME_TAKEN`, เก็บ hash<br>login: ตรวจรหัส (ผิดหรือไม่มีชื่อตอบ `WRONG_CREDENTIALS` เหมือนกัน), ชื่อออนไลน์อยู่แล้วตอบ `ALREADY_ONLINE`, ตั้ง `socket.data.name`, ใส่ `state.onlineUsers`, ให้ socket เข้าห้องทุกกลุ่มที่เป็นสมาชิก, ตอบ ack, `sendUsersList`, `sendGroupsList` ให้คนนี้<br>disconnect: ลบออกจาก `onlineUsers` แล้ว `sendUsersList` | R3, R4 |
 | `room.ts` | มีแล้ว | `room:history` | ห้อง DM ต้องมีชื่อผู้ขอใน `roomId` ห้องกลุ่มผู้ขอต้องเป็นสมาชิก ไม่ผ่านตอบ `NOT_A_MEMBER` แล้วคืนข้อความล่าสุดไม่เกิน 100 ข้อความ เรียงเก่าไปใหม่ | R5, R7, R11 |
 | `dm.ts` | มีแล้ว | `dm:send` | ผู้รับต้องมีบัญชี (ไม่มีตอบ `USER_NOT_FOUND`) ออฟไลน์ก็ส่งได้ บันทึกด้วย `roomId = dmRoomId(ผู้ส่ง, ผู้รับ)` แล้วส่ง `message:new` ให้ socket ของผู้ส่งและผู้รับเท่านั้น (หา socket id จาก `state.onlineUsers`) | R5, R7 |
-| `group.ts` | มีแล้ว (`group:send` เสร็จ, `group:create` และ `group:join` ยัง TODO) | `group:create`, `group:join`, `group:send` | create: ผู้สร้างเป็นสมาชิกคนเดียว ห้ามรับรายชื่อคนอื่น, `socket.join(groupRoomId(id))`, `sendGroupsList` ให้ทุกคน<br>join: เพิ่มเฉพาะตัวผู้ขอเอง ไม่มีวิธีเพิ่มคนอื่น, เป็นสมาชิกแล้วตอบ `ALREADY_A_MEMBER`, `socket.join`, `sendGroupsList` ให้ทุกคน<br>send: ไม่ใช่สมาชิกตอบ `NOT_A_MEMBER`, บันทึก, ส่ง `message:new` เข้า room ของกลุ่มเท่านั้น | R5, R8-R11 |
+| `group.ts` | มีแล้ว (`group:join` และ `group:send` เสร็จ, `group:create` ยัง TODO) | `group:create`, `group:join`, `group:send` | create: ผู้สร้างเป็นสมาชิกคนเดียว ห้ามรับรายชื่อคนอื่น, `socket.join(groupRoomId(id))`, `sendGroupsList` ให้ทุกคน<br>join: เพิ่มเฉพาะตัวผู้ขอเอง ไม่มีวิธีเพิ่มคนอื่น, เป็นสมาชิกแล้วตอบ `ALREADY_A_MEMBER`, `socket.join`, `sendGroupsList` ให้ทุกคน<br>send: ไม่ใช่สมาชิกตอบ `NOT_A_MEMBER`, บันทึก, ส่ง `message:new` เข้า room ของกลุ่มเท่านั้น | R5, R8-R11 |
 
 ไฟล์ handler ของ special point (สร้างเมื่อเลือกข้อแล้ว ชื่อเป็นตัวอย่าง)
 
@@ -151,7 +151,8 @@ React component
 | `server/test/chat-server.test.ts` | มีแล้ว | ต่อได้ด้วย websocket, ปฏิเสธ polling, ack ทำงาน, `dmRoomId`, `NAME_PATTERN` | R2 |
 | `server/test/helpers.ts` | มีแล้ว | เปิด server ชั่วคราว สร้าง client ที่ login แล้ว สุ่มชื่อผู้ใช้ทดสอบ ใช้ร่วมกันทุกไฟล์ทดสอบ | - |
 | `server/test/auth.test.ts` | มีแล้ว | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด | R3, R4 |
-| `server/test/dm.test.ts` | มีแล้ว | ผู้ส่งและผู้รับได้ `message:new` แต่คนที่สามไม่ได้ | R5, R7 |
+| `server/test/dm.test.ts` | มีแล้ว | ผู้ส่งและผู้รับได้ `message:new` แต่คนที่สามไม่ได้, ส่งหาตัวเองไม่ได้ | R5, R7 |
+| `server/test/membership.test.ts` | มีแล้ว | เข้ากลุ่มได้เฉพาะตัวเอง (แนบชื่อคนอื่นมาก็ไม่ถูกเพิ่ม), เข้าซ้ำได้ `ALREADY_A_MEMBER`, ทุกเครื่องเห็นสมาชิกใหม่, เข้าแล้วได้รับข้อความและประวัติของกลุ่ม | R9, R10, R11 |
 | `server/test/group.test.ts` | มีบางส่วน (เฉพาะ `group:send`) | สร้างกลุ่มแล้วมีสมาชิกคนเดียว, ทุกคนเห็นกลุ่ม, เข้ากลุ่มเอง, คนนอกกลุ่มส่งและรับข้อความไม่ได้ | R8-R11 |
 | `server/test/room.test.ts` | มีแล้ว | คนนอกห้องโหลดประวัติไม่ได้, ประวัติเรียงเก่าไปใหม่ | R5, R7, R11 |
 

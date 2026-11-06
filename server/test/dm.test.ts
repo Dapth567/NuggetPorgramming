@@ -92,6 +92,13 @@ test("blank and malformed messages are rejected (R6)", async () => {
   bob.client.close();
 });
 
+test("a DM to yourself is rejected (R7)", async () => {
+  const alice = await user();
+  const res = await alice.client.emitWithAck("dm:send", { to: alice.name, text: "hello me" });
+  assert.deepEqual(res, { ok: false, error: "INVALID_INPUT" });
+  alice.client.close();
+});
+
 test("sending needs a login", async () => {
   const client = await connectClient(server.url);
   const res = await client.emitWithAck("dm:send", { to: "someone", text: "hello" });

@@ -18,7 +18,8 @@ export function registerDmHandlers(io: ChatServer, socket: ChatSocket) {
     if (!name) return ack(NOT_LOGGED_IN);
 
     const { to, text } = asRecord(payload);
-    if (!isValidName(to) || !isValidText(text)) return ack(INVALID_INPUT);
+    // A DM needs two people; the online list does not let you open a chat with yourself either.
+    if (!isValidName(to) || to === name || !isValidText(text)) return ack(INVALID_INPUT);
 
     try {
       if (!(await userExists(to))) return ack({ ok: false, error: "USER_NOT_FOUND" });
