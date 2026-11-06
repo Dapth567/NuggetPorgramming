@@ -78,3 +78,5 @@ npm run check:db     # ทดสอบการเชื่อมต่อ Supab
 | R2 ใช้ socket เท่านั้น | วางโครงแล้ว (บังคับ `transports: ["websocket"]`) |
 | R3-R11 | ยังไม่ทำ (มี `TODO` ใน `server/src/handlers/`) |
 | Special points 1-4 | ยังไม่ได้เลือก (ต้องมี AI อย่างน้อย 1 ข้อ) |
+
+#i love nugget
