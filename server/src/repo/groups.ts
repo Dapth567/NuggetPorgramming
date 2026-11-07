@@ -15,7 +15,8 @@ export async function listGroups(): Promise<GroupInfo[]> {
     const key = String(row.group_id);
     byGroup.set(key, [...(byGroup.get(key) ?? []), row.user_name]);
   }
-  return groups.data.map((g) => ({
+  // createGroup adds the creator in a second request, so skip a group caught in between (R8).
+  return groups.data.filter((g) => byGroup.has(String(g.id))).map((g) => ({
     id: String(g.id),
     name: g.name,
     createdBy: g.created_by,
