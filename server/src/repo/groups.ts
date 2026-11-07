@@ -33,7 +33,15 @@ export async function createGroup(name: string, createdBy: string): Promise<Grou
   if (error) throw new Error(error.message);
 
   const id = String(data.id);
-  await addMember(id, createdBy);
+  try {
+    await addMember(id, createdBy);
+  } catch (error) {
+    // The REST API has no transactions, so undo the group rather than leave it with no members.
+    // supabase-js returns errors instead of throwing, so a failed undo must be logged here.
+    const undo = await db.from("groups").delete().eq("id", id);
+    if (undo.error) console.error(`[createGroup] group ${id} has no members:`, undo.error.message);
+    throw error;
+  }
   return { id, name, createdBy, members: [createdBy] };
 }
 

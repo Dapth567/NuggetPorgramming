@@ -2,7 +2,7 @@ import type { AddressInfo } from "node:net";
 import { randomBytes } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { io as connect, type Socket } from "socket.io-client";
-import type { ChatMessage, ClientToServerEvents, ServerToClientEvents } from "@chat/shared";
+import type { ChatMessage, ClientToServerEvents, GroupInfo, ServerToClientEvents } from "@chat/shared";
 import { createChatServer } from "../src/chat-server.js";
 import { db } from "../src/db.js";
 
@@ -63,6 +63,19 @@ export function nextUsersList(client: TestClient, predicate: (names: string[]) =
       resolve(names);
     };
     client.on("users:list", onList);
+  });
+}
+
+/** Wait for the next `groups:list` with a group that satisfies `predicate`; resolves to that group. */
+export function nextGroup(client: TestClient, predicate: (group: GroupInfo) => boolean) {
+  return new Promise<GroupInfo>((resolve) => {
+    const onList = (groups: GroupInfo[]) => {
+      const group = groups.find(predicate);
+      if (!group) return;
+      client.off("groups:list", onList);
+      resolve(group);
+    };
+    client.on("groups:list", onList);
   });
 }
 

@@ -49,6 +49,19 @@ test("a request is answered through its ack", async () => {
   client.close();
 });
 
+test("an event that is not exactly (payload, callback) is dropped instead of crashing the server", async () => {
+  const client: Socket<ServerToClientEvents, ClientToServerEvents> = connect(url, {
+    transports: ["websocket"],
+  });
+  const raw = client as unknown as { emit: (...args: unknown[]) => void };
+  raw.emit("dm:send", { to: "a", text: "b" }); // no callback
+  raw.emit("auth:login", () => {}); // the callback lands where the payload goes
+  raw.emit("dm:send", { to: "a", text: "b" }, "extra", () => {}); // one argument too many
+  const response = await client.emitWithAck("dm:send", { to: "a", text: "b" });
+  assert.deepEqual(response, { ok: false, error: "NOT_LOGGED_IN" });
+  client.close();
+});
+
 test("a DM room id is the same from both sides", () => {
   assert.equal(dmRoomId("bob", "alice"), "dm:alice|bob");
   assert.equal(dmRoomId("alice", "bob"), "dm:alice|bob");
