@@ -1,10 +1,22 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { dmRoomId, groupRoomId, LIMITS, type ErrorCode } from "@chat/shared";
+import { dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
 import { GroupList } from "./components/GroupList";
 import { ERROR_TEXT } from "./errors";
 import { useChat, type ChatApi } from "./useChat";
 
 type Room = { kind: "dm"; name: string } | { kind: "group"; id: string };
+
+/**
+ * The rules the server checks, said plainly so the user knows what to fix.
+ * The server still checks again and answers INVALID_INPUT if anything slips through.
+ */
+function formProblem(mode: "login" | "register", name: string, password: string): string | null {
+  if (!NAME_PATTERN.test(name)) return "Username can only use letters, numbers and _ (no spaces or symbols)";
+  if (mode === "register" && password.length < LIMITS.passwordMinLength) {
+    return `Password must be at least ${LIMITS.passwordMinLength} characters`;
+  }
+  return null;
+}
 
 function LoginScreen({ chat }: { chat: ChatApi }) {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -15,6 +27,8 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    const problem = formProblem(mode, name, password);
+    if (problem) return setError(problem);
     setError("");
     setBusy(true);
     let failure = mode === "register" ? await chat.register(name, password) : null;
@@ -40,6 +54,12 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        {mode === "register" && (
+          <p className="hint">
+            Username: letters, numbers or _ (up to {LIMITS.nameMaxLength}) · Password: at least{" "}
+            {LIMITS.passwordMinLength} characters
+          </p>
+        )}
         {error && <p className="error">{error}</p>}
         <button className="primary" disabled={!chat.connected || busy || !name || !password}>
           {mode === "login" ? "Log in" : "Sign up"}
