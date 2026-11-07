@@ -141,7 +141,7 @@ React component
 | --- | --- | --- |
 | `server/src/handlers/ai.ts` | ยังไม่มี | รับ event ของฟีเจอร์ AI (เช่น `ai:summarize` สรุปบทสนทนาจาก `room:history`) ตรวจสิทธิ์ห้องแบบเดียวกับ `room.ts` |
 | `server/src/ai/client.ts` | ยังไม่มี | เรียก API ของโมเดล AI จาก server เท่านั้น อ่าน key จาก `.env` ห้ามส่ง key ไปที่ React |
-| `server/src/handlers/typing.ts` | ยังไม่มี | (ถ้าเลือก) แสดงว่ากำลังพิมพ์ ส่งต่อให้คนในห้องเดียวกันเท่านั้น |
+| `server/src/handlers/typing.ts` | มีแล้ว | `typing:set` แสดงว่ากำลังพิมพ์ ส่งต่อเป็น `typing:update` ให้คนอื่นในห้องเดียวกันเท่านั้น ไม่บันทึกลงฐานข้อมูล ตรวจสิทธิ์จาก `socket.rooms` (กลุ่ม) และชื่อใน `roomId` (DM) |
 
 ถ้าเลือก special point อื่น ให้ตั้งชื่อ `server/src/handlers/<ชื่อฟีเจอร์>.ts` แล้วเพิ่มแถวในตารางนี้
 
@@ -160,6 +160,7 @@ React component
 | `server/test/delete.test.ts` | มีแล้ว | สิทธิ์ลบข้อความและกลุ่ม การแจ้งเตือน และการลบประวัติ | - |
 | `server/test/profile.test.ts` | มีแล้ว | ตรวจชนิดและขนาดรูปโปรไฟล์, แจ้งทุกคนเมื่อเปลี่ยนรูป, โหลดรูปตอน login | Special |
 | `server/test/room.test.ts` | มีแล้ว | คนนอกห้องโหลดประวัติไม่ได้, ประวัติเรียงเก่าไปใหม่ | R5, R7, R11 |
+| `server/test/typing.test.ts` | มีแล้ว | สมาชิกคนอื่นเห็นว่ากำลังพิมพ์ แต่ผู้พิมพ์และคนนอกห้องไม่ได้รับ, คนนอกส่งเข้ากลุ่มหรือ DM ของคนอื่นไม่ได้, room id ผิดรูปแบบ | Special |
 
 ### `client/` ฝั่ง React
 

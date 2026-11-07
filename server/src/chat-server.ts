@@ -5,6 +5,7 @@ import { registerDmHandlers } from "./handlers/dm.js";
 import { registerGroupHandlers } from "./handlers/group.js";
 import { registerProfileHandlers } from "./handlers/profile.js";
 import { registerRoomHandlers } from "./handlers/room.js";
+import { registerTypingHandlers } from "./handlers/typing.js";
 import type { ChatServer } from "./types.js";
 
 export function createChatServer() {
@@ -27,6 +28,7 @@ export function createChatServer() {
     registerGroupHandlers(io, socket);
     registerProfileHandlers(io, socket);
     registerRoomHandlers(io, socket);
+    registerTypingHandlers(io, socket);
 
     socket.on("disconnect", (reason) => {
       console.log(`[disconnect] ${socket.id} (${reason})`);

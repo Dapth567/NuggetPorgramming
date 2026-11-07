@@ -24,3 +24,9 @@ export const PREVIEW_MESSAGES: Record<string, ChatMessage[]> = {
     { id: "5", roomId: group, sender: PREVIEW_ME, text: "2 PM", sentAt: at(2) },
   ],
 };
+
+/** Who is shown typing, by room, so the indicator can be seen without a server. */
+export const PREVIEW_TYPING: Record<string, string[]> = {
+  [dm]: ["alice"],
+  [group]: ["alice", "bob"],
+};

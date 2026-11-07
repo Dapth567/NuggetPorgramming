@@ -78,6 +78,14 @@ export interface ClientToServerEvents {
   "message:delete": (payload: { messageId: string }, ack: Reply<void>) => void;
   /** `null` removes the photo. */
   "profile:avatar": (payload: { image: string | null }, ack: Reply<void>) => void;
+  /** Tell the others in a room that you started or stopped typing. Nothing is stored. */
+  "typing:set": (payload: { roomId: string; typing: boolean }, ack: Reply<void>) => void;
+}
+
+export interface TypingUpdate {
+  roomId: string;
+  name: string;
+  typing: boolean;
 }
 
 export interface ServerToClientEvents {
@@ -88,4 +96,5 @@ export interface ServerToClientEvents {
   "group:deleted": (payload: { groupId: string }) => void;
   "avatars:list": (avatars: UserAvatar[]) => void;
   "avatar:updated": (avatar: { name: string; image: string | null }) => void;
+  "typing:update": (update: TypingUpdate) => void;
 }

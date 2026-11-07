@@ -130,8 +130,16 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
+/** "bob is typing", "bob and carol are typing", or "Several people are typing". */
+function typingLine(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) return `${names[0]} is typing`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing`;
+  return "Several people are typing";
+}
+
 function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
-  const { users, groups, messagesByRoom, avatars, openRoom } = chat;
+  const { users, groups, messagesByRoom, avatars, openRoom, typingByRoom, notifyTyping, stopTyping } = chat;
   const [room, setRoom] = useState<Room | null>(null);
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
@@ -142,6 +150,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const group = room?.kind === "group" ? groups.find((g) => g.id === room.id) : undefined;
   const isMember = room?.kind === "dm" || group?.members.includes(me) === true;
   const current = roomId ? (messagesByRoom[roomId] ?? []) : [];
+  const typing = roomId ? typingLine((typingByRoom[roomId] ?? []).filter((name) => name !== me)) : null;
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -160,6 +169,9 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [current.length, roomId]);
+
+  // Leaving a room (or logging out) tells it you stopped typing there.
+  useEffect(() => stopTyping, [roomId, stopTyping]);
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
@@ -340,13 +352,24 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               })}
               <div ref={bottomRef} />
             </div>
+            <div className="typing" aria-live="polite">
+              {typing && (
+                <>
+                  {typing}
+                  <span className="typing-dots" aria-hidden="true"><span /><span /><span /></span>
+                </>
+              )}
+            </div>
             {isMember ? (
               <form className="composer" onSubmit={send}>
                 <input
                   placeholder="Type a message"
                   value={text}
                   maxLength={LIMITS.textMaxLength}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    if (roomId) notifyTyping(roomId, e.target.value.trim().length > 0);
+                  }}
                 />
                 <button className="primary" disabled={!text.trim()}>
                   Send
