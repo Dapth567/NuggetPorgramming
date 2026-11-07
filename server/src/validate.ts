@@ -27,7 +27,18 @@ export function isValidText(value: unknown): value is string {
   );
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// A fixed list of image types: an SVG can carry scripts, so it is never accepted.
+const AVATAR_PATTERN = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+export function isValidAvatar(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= LIMITS.avatarMaxLength &&
+    AVATAR_PATTERN.test(value)
+  );
+}
+
+const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Postgres rejects a malformed uuid with an error, so catch it here as bad input. */
 export function isValidGroupId(value: unknown): value is string {

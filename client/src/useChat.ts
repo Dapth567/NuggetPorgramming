@@ -6,6 +6,7 @@ import {
   type ChatMessage,
   type ErrorCode,
   type GroupInfo,
+  type UserAvatar,
 } from "@chat/shared";
 import { PREVIEW_GROUPS, PREVIEW_ME, PREVIEW_MESSAGES, PREVIEW_USERS } from "./preview";
 import { socket } from "./socket";
@@ -33,6 +34,8 @@ export function useChat(preview = false) {
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ChatMessage[]>>(
     preview ? PREVIEW_MESSAGES : {},
   );
+  // A Map, because a name such as `constructor` would find a built-in on a plain object.
+  const [avatars, setAvatars] = useState<ReadonlyMap<string, string>>(new Map());
   const deletedMessages = useRef(new Set<string>());
   const deletedGroups = useRef(new Set<string>());
   const [deletedGroupIds, setDeletedGroupIds] = useState<Set<string>>(new Set());
@@ -54,6 +57,16 @@ export function useChat(preview = false) {
     setUsers([]);
     setGroups([]);
     setMessagesByRoom({});
+    setAvatars(new Map());
+  }, []);
+
+  const updateAvatar = useCallback(({ name, image }: { name: string; image: string | null }) => {
+    setAvatars((prev) => {
+      const next = new Map(prev);
+      if (image) next.set(name, image);
+      else next.delete(name);
+      return next;
+    });
   }, []);
 
   const removeMessage = useCallback(({ messageId, roomId }: { messageId: string; roomId: string }) => {
@@ -84,6 +97,7 @@ export function useChat(preview = false) {
       reset();
     };
     const onGroups = (list: GroupInfo[]) => setGroups(list.filter((group) => !deletedGroups.current.has(group.id)));
+    const onAvatars = (list: UserAvatar[]) => setAvatars(new Map(list.map((a) => [a.name, a.image])));
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("users:list", setUsers);
@@ -91,6 +105,8 @@ export function useChat(preview = false) {
     socket.on("message:new", addMessage);
     socket.on("message:deleted", removeMessage);
     socket.on("group:deleted", removeGroup);
+    socket.on("avatars:list", onAvatars);
+    socket.on("avatar:updated", updateAvatar);
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -99,8 +115,10 @@ export function useChat(preview = false) {
       socket.off("message:new", addMessage);
       socket.off("message:deleted", removeMessage);
       socket.off("group:deleted", removeGroup);
+      socket.off("avatars:list", onAvatars);
+      socket.off("avatar:updated", updateAvatar);
     };
-  }, [preview, addMessage, removeMessage, removeGroup, reset]);
+  }, [preview, addMessage, removeMessage, removeGroup, updateAvatar, reset]);
 
   const register = useCallback(
     async (name: string, password: string): Promise<Result> =>
@@ -210,12 +228,22 @@ export function useChat(preview = false) {
     return toResult(res);
   }, [preview, removeGroup]);
 
+  /** Every client, including this one, shows the photo from `avatar:updated`. `null` removes it. */
+  const changeAvatar = useCallback(async (image: string | null): Promise<Result> => {
+    if (preview) {
+      updateAvatar({ name: PREVIEW_ME, image });
+      return null;
+    }
+    return toResult(await socket.emitWithAck("profile:avatar", { image }));
+  }, [preview, updateAvatar]);
+
   return {
     connected: preview || connected,
     me,
     users,
     groups,
     messagesByRoom,
+    avatars,
     deletedGroupIds,
     register,
     login,
@@ -227,6 +255,7 @@ export function useChat(preview = false) {
     joinGroup,
     deleteMessage,
     deleteGroup,
+    changeAvatar,
   };
 }
 

@@ -84,6 +84,7 @@ React ควรเช็กก่อนส่งด้วย แต่ server �
 | รหัสผ่าน | อย่างน้อย 6 ตัวอักษร |
 | ชื่อกลุ่ม | 1-50 ตัวอักษร ชื่อซ้ำกันได้ เพราะแยกด้วย `id` |
 | ข้อความ | 1-2000 ตัวอักษร ห้ามเป็นช่องว่างล้วน |
+| รูปโปรไฟล์ | data URL แบบ base64 ของ JPEG, PNG หรือ WebP ยาวไม่เกิน 20000 ตัวอักษร ห้ามใช้ SVG |
 
 ## Client ส่งถึง server
 
@@ -188,6 +189,17 @@ server ตรวจสมาชิก บันทึกข้อความ �
 ทั้งสอง event ตอบ ack ตามรูปแบบ `Ack<void>` ต้อง login และข้อมูลต้องเป็น UUID
 การลบกลุ่มต้องติดตั้ง [`supabase/delete_group.sql`](../supabase/delete_group.sql) ใน Supabase ก่อน
 
+### `profile:avatar`
+
+ตั้งหรือลบรูปโปรไฟล์ของคนที่ login อยู่เท่านั้น ส่ง `{ image: null }` เพื่อลบรูป ตอบ ack แบบ `Ack<void>`
+
+```ts
+const res = await socket.emitWithAck("profile:avatar", { image: "data:image/jpeg;base64,..." });
+```
+
+server ตรวจรูป บันทึก แล้วส่ง `avatar:updated` ให้ทุกคนที่ login แล้ว รวมผู้ส่ง
+ฟีเจอร์นี้ต้องติดตั้ง [`supabase/avatars.sql`](../supabase/avatars.sql) ใน Supabase ก่อน
+
 ## Server ส่งถึง client
 
 | Event | ข้อมูล | ส่งเมื่อไหร่ | ส่งให้ใคร | Requirement |
@@ -197,6 +209,8 @@ server ตรวจสมาชิก บันทึกข้อความ �
 | `message:new` | `ChatMessage` | มีข้อความใหม่ | สมาชิกในห้องนั้นเท่านั้น | R6, R7, R11 |
 | `message:deleted` | `{ messageId, roomId }` | ข้อความถูกลบ | ผู้เข้าร่วม DM ที่ออนไลน์ หรือ socket ในกลุ่ม | - |
 | `group:deleted` | `{ groupId }` | กลุ่มถูกลบ | ผู้ใช้ที่ login ทั้งหมด | - |
+| `avatars:list` | `UserAvatar[]` | login | คนที่เพิ่ง login | Special |
+| `avatar:updated` | `{ name, image }` (`image` เป็น `null` เมื่อลบรูป) | มีคนเปลี่ยนรูป | ผู้ใช้ที่ login ทั้งหมด | Special |
 
 `users:list` และ `groups:list` ส่งรายการเต็มทุกครั้ง ให้ React แทนที่ของเดิมได้เลย
 
