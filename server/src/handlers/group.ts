@@ -1,7 +1,8 @@
 import { groupRoomId } from "@chat/shared";
 import { sendGroupsList } from "../broadcast.js";
-import { addMember, createGroup, findGroup, isMember } from "../repo/groups.js";
+import { addMember, createGroup, deleteGroup, findGroup, isMember } from "../repo/groups.js";
 import { saveMessage } from "../repo/messages.js";
+import { state } from "../state.js";
 import type { ChatServer, ChatSocket } from "../types.js";
 import {
   asRecord,
@@ -14,6 +15,25 @@ import {
 } from "../validate.js";
 
 export function registerGroupHandlers(io: ChatServer, socket: ChatSocket) {
+  socket.on("group:delete", async (payload, ack) => {
+    const name = requireLogin(socket);
+    if (!name) return ack(NOT_LOGGED_IN);
+    const { groupId } = asRecord(payload);
+    if (!isValidGroupId(groupId)) return ack(INVALID_INPUT);
+    try {
+      const result = await deleteGroup(groupId, name);
+      if (result === "not_found") return ack({ ok: false, error: "GROUP_NOT_FOUND" });
+      if (result === "forbidden") return ack({ ok: false, error: "FORBIDDEN" });
+      const ids = [...state.onlineUsers.values()];
+      if (ids.length) io.to(ids).emit("group:deleted", { groupId });
+      io.in(groupRoomId(groupId)).socketsLeave(groupRoomId(groupId));
+      ack({ ok: true, data: undefined });
+    } catch (error) {
+      console.error("[group:delete]", error);
+      ack({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
   socket.on("group:create", async (payload, ack) => {
     const me = requireLogin(socket);
     if (!me) return ack(NOT_LOGGED_IN);

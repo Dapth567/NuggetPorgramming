@@ -6,7 +6,7 @@ export const PREVIEW_ME = "you";
 export const PREVIEW_USERS = [PREVIEW_ME, "alice", "bob"];
 
 export const PREVIEW_GROUPS: GroupInfo[] = [
-  { id: "g1", name: "Study group", createdBy: "alice", members: ["alice", PREVIEW_ME, "bob"] },
+  { id: "g1", name: "Study group", createdBy: PREVIEW_ME, members: ["alice", PREVIEW_ME, "bob"] },
 ];
 
 const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60000).toISOString();

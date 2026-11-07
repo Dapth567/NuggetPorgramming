@@ -1,6 +1,7 @@
 import { dmRoomId, LIMITS, type Ack, type ChatMessage } from "@chat/shared";
 import { findGroup, isMember } from "../repo/groups.js";
-import { roomHistory } from "../repo/messages.js";
+import { deleteOwnMessage, roomHistory } from "../repo/messages.js";
+import { state } from "../state.js";
 import type { ChatServer, ChatSocket } from "../types.js";
 import {
   asRecord,
@@ -37,7 +38,31 @@ async function denyRoomAccess(name: string, roomId: string): Promise<Ack<never> 
   return INVALID_INPUT;
 }
 
-export function registerRoomHandlers(_io: ChatServer, socket: ChatSocket) {
+export function registerRoomHandlers(io: ChatServer, socket: ChatSocket) {
+  socket.on("message:delete", async (payload, ack) => {
+    const name = requireLogin(socket);
+    if (!name) return ack(NOT_LOGGED_IN);
+    const { messageId } = asRecord(payload);
+    if (!isValidGroupId(messageId)) return ack(INVALID_INPUT);
+    try {
+      const roomId = await deleteOwnMessage(messageId, name);
+      if (!roomId) return ack({ ok: false, error: "MESSAGE_NOT_FOUND" });
+      const notification = { messageId, roomId };
+      if (roomId.startsWith(GROUP_PREFIX)) {
+        io.to(roomId).emit("message:deleted", notification);
+      } else {
+        const ids = roomId.slice(DM_PREFIX.length).split("|")
+          .map((participant) => state.onlineUsers.get(participant))
+          .filter((id): id is string => id !== undefined);
+        if (ids.length) io.to(ids).emit("message:deleted", notification);
+      }
+      ack({ ok: true, data: undefined });
+    } catch (error) {
+      console.error("[message:delete]", error);
+      ack({ ok: false, error: "SERVER_ERROR" });
+    }
+  });
+
   socket.on("room:history", async (payload, ack: (res: Ack<ChatMessage[]>) => void) => {
     const name = requireLogin(socket);
     if (!name) return ack(NOT_LOGGED_IN);

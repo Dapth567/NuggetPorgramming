@@ -15,6 +15,7 @@
 2. รอโปรเจกต์สร้างเสร็จ แล้วไปที่ **SQL Editor** > **New query**
 3. คัดลอกเนื้อหาไฟล์ [`supabase/schema.sql`](../supabase/schema.sql) ไปวาง แล้วกด **Run**
    (รันซ้ำได้ ตารางที่มีอยู่แล้วจะไม่ถูกลบ)
+   จากนั้นรัน [`supabase/delete_group.sql`](../supabase/delete_group.sql) ใน SQL Editor ด้วย เพื่อเปิดใช้งานการลบกลุ่มแบบ atomic (ต้องรันกับฐานข้อมูลเดิมด้วย)
 4. เอาค่า 2 อย่างมาใส่ในไฟล์ `.env`
    - **Project URL**: **Project Settings** > **Data API** (หรือ **API**) ช่อง Project URL
    - **Secret key**: **Project Settings** > **API Keys** เลือก key ที่ขึ้นต้นด้วย `sb_secret_` (ถ้าโปรเจกต์เก่า ให้ใช้ `service_role` key)

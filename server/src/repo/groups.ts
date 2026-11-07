@@ -84,3 +84,12 @@ export async function groupsOf(name: string): Promise<string[]> {
   if (error) throw new Error(error.message);
   return data.map((row) => String(row.group_id));
 }
+
+export async function deleteGroup(id: string, creator: string): Promise<"deleted" | "not_found" | "forbidden"> {
+  const { data, error } = await db.rpc("delete_chat_group", { p_group_id: id, p_creator: creator });
+  if (error) throw new Error(error.message);
+  if (data !== "deleted" && data !== "not_found" && data !== "forbidden") {
+    throw new Error("Unexpected delete_chat_group result");
+  }
+  return data;
+}

@@ -178,6 +178,16 @@ server บันทึกข้อความ แล้วส่ง `message:ne
 
 server ตรวจสมาชิก บันทึกข้อความ แล้วส่ง `message:new` ให้สมาชิกกลุ่มเท่านั้น รวมผู้ส่ง
 
+### การลบ
+
+| Event | Payload | สิทธิ์และผล |
+| --- | --- | --- |
+| `message:delete` | `{ messageId }` | ผู้ส่งเท่านั้น ลบสำหรับทุกคน; ไม่มีข้อความหรือไม่ใช่ผู้ส่งตอบ `MESSAGE_NOT_FOUND` |
+| `group:delete` | `{ groupId }` | ผู้สร้างเท่านั้น ลบกลุ่ม สมาชิก และข้อความทั้งหมดแบบถาวร; คนอื่นได้ `FORBIDDEN` |
+
+ทั้งสอง event ตอบ ack ตามรูปแบบ `Ack<void>` ต้อง login และข้อมูลต้องเป็น UUID
+การลบกลุ่มต้องติดตั้ง [`supabase/delete_group.sql`](../supabase/delete_group.sql) ใน Supabase ก่อน
+
 ## Server ส่งถึง client
 
 | Event | ข้อมูล | ส่งเมื่อไหร่ | ส่งให้ใคร | Requirement |
@@ -185,6 +195,8 @@ server ตรวจสมาชิก บันทึกข้อความ �
 | `users:list` | `string[]` | มีคน login หรือหลุดการเชื่อมต่อ | ทุกคนที่ login แล้ว | R4 |
 | `groups:list` | `GroupInfo[]` | login, สร้างกลุ่ม, เข้ากลุ่ม | ดูที่ event ต้นทาง | R9 |
 | `message:new` | `ChatMessage` | มีข้อความใหม่ | สมาชิกในห้องนั้นเท่านั้น | R6, R7, R11 |
+| `message:deleted` | `{ messageId, roomId }` | ข้อความถูกลบ | ผู้เข้าร่วม DM ที่ออนไลน์ หรือ socket ในกลุ่ม | - |
+| `group:deleted` | `{ groupId }` | กลุ่มถูกลบ | ผู้ใช้ที่ login ทั้งหมด | - |
 
 `users:list` และ `groups:list` ส่งรายการเต็มทุกครั้ง ให้ React แทนที่ของเดิมได้เลย
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   dmRoomId,
   groupRoomId,
@@ -33,8 +33,13 @@ export function useChat(preview = false) {
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ChatMessage[]>>(
     preview ? PREVIEW_MESSAGES : {},
   );
+  const deletedMessages = useRef(new Set<string>());
+  const deletedGroups = useRef(new Set<string>());
+  const [deletedGroupIds, setDeletedGroupIds] = useState<Set<string>>(new Set());
 
   const addMessage = useCallback((m: ChatMessage) => {
+    if (deletedMessages.current.has(m.id) ||
+        (m.roomId.startsWith("group:") && deletedGroups.current.has(m.roomId.slice(6)))) return;
     setMessagesByRoom((prev) => {
       const list = prev[m.roomId] ?? [];
       return list.some((x) => x.id === m.id) ? prev : { ...prev, [m.roomId]: [...list, m] };
@@ -42,10 +47,32 @@ export function useChat(preview = false) {
   }, []);
 
   const reset = useCallback(() => {
+    deletedMessages.current.clear();
+    deletedGroups.current.clear();
+    setDeletedGroupIds(new Set());
     setMe(null);
     setUsers([]);
     setGroups([]);
     setMessagesByRoom({});
+  }, []);
+
+  const removeMessage = useCallback(({ messageId, roomId }: { messageId: string; roomId: string }) => {
+    deletedMessages.current.add(messageId);
+    setMessagesByRoom((prev) => ({
+      ...prev,
+      [roomId]: (prev[roomId] ?? []).filter((message) => message.id !== messageId),
+    }));
+  }, []);
+
+  const removeGroup = useCallback(({ groupId }: { groupId: string }) => {
+    deletedGroups.current.add(groupId);
+    setDeletedGroupIds(new Set(deletedGroups.current));
+    setGroups((prev) => prev.filter((group) => group.id !== groupId));
+    setMessagesByRoom((prev) => {
+      const next = { ...prev };
+      delete next[groupRoomId(groupId)];
+      return next;
+    });
   }, []);
 
   // Listeners go in before login, or the first `users:list` and `groups:list` would be missed.
@@ -56,19 +83,24 @@ export function useChat(preview = false) {
       setConnected(false);
       reset();
     };
+    const onGroups = (list: GroupInfo[]) => setGroups(list.filter((group) => !deletedGroups.current.has(group.id)));
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("users:list", setUsers);
-    socket.on("groups:list", setGroups);
+    socket.on("groups:list", onGroups);
     socket.on("message:new", addMessage);
+    socket.on("message:deleted", removeMessage);
+    socket.on("group:deleted", removeGroup);
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("users:list", setUsers);
-      socket.off("groups:list", setGroups);
+      socket.off("groups:list", onGroups);
       socket.off("message:new", addMessage);
+      socket.off("message:deleted", removeMessage);
+      socket.off("group:deleted", removeGroup);
     };
-  }, [preview, addMessage, reset]);
+  }, [preview, addMessage, removeMessage, removeGroup, reset]);
 
   const register = useCallback(
     async (name: string, password: string): Promise<Result> =>
@@ -95,11 +127,13 @@ export function useChat(preview = false) {
       if (preview) return null;
       const res = await socket.emitWithAck("room:history", { roomId });
       if (res.ok) {
+        if (roomId.startsWith("group:") && deletedGroups.current.has(roomId.slice(6))) return null;
         // Keep anything `message:new` delivered while the history was loading.
         setMessagesByRoom((prev) => {
-          const loaded = new Set(res.data.map((m) => m.id));
-          const newer = (prev[roomId] ?? []).filter((m) => !loaded.has(m.id));
-          return { ...prev, [roomId]: [...res.data, ...newer] };
+          const history = res.data.filter((m) => !deletedMessages.current.has(m.id));
+          const loaded = new Set(history.map((m) => m.id));
+          const newer = (prev[roomId] ?? []).filter((m) => !loaded.has(m.id) && !deletedMessages.current.has(m.id));
+          return { ...prev, [roomId]: [...history, ...newer] };
         });
       }
       return toResult(res);
@@ -136,7 +170,8 @@ export function useChat(preview = false) {
       if (preview) return { error: "NOT_IMPLEMENTED" };
       const res = await socket.emitWithAck("group:create", { name });
       if (!res.ok) return { error: res.error };
-      setGroups((prev) => withGroup(prev, res.data));
+      if (deletedGroups.current.has(res.data.id)) return { error: "GROUP_NOT_FOUND" };
+      setGroups((prev) => deletedGroups.current.has(res.data.id) ? prev : withGroup(prev, res.data));
       return { groupId: res.data.id };
     },
     [preview],
@@ -146,11 +181,34 @@ export function useChat(preview = false) {
     async (groupId: string): Promise<Result> => {
       if (preview) return null;
       const res = await socket.emitWithAck("group:join", { groupId });
-      if (res.ok) setGroups((prev) => withGroup(prev, res.data));
+      if (res.ok) {
+        if (deletedGroups.current.has(groupId)) return "GROUP_NOT_FOUND";
+        setGroups((prev) => deletedGroups.current.has(groupId) ? prev : withGroup(prev, res.data));
+      }
       return toResult(res);
     },
     [preview],
   );
+
+  const deleteMessage = useCallback(async (messageId: string, roomId: string): Promise<Result> => {
+    if (preview) {
+      removeMessage({ messageId, roomId });
+      return null;
+    }
+    const res = await socket.emitWithAck("message:delete", { messageId });
+    if (res.ok) removeMessage({ messageId, roomId });
+    return toResult(res);
+  }, [preview, removeMessage]);
+
+  const deleteGroup = useCallback(async (groupId: string): Promise<Result> => {
+    if (preview) {
+      removeGroup({ groupId });
+      return null;
+    }
+    const res = await socket.emitWithAck("group:delete", { groupId });
+    if (res.ok) removeGroup({ groupId });
+    return toResult(res);
+  }, [preview, removeGroup]);
 
   return {
     connected: preview || connected,
@@ -158,6 +216,7 @@ export function useChat(preview = false) {
     users,
     groups,
     messagesByRoom,
+    deletedGroupIds,
     register,
     login,
     logout,
@@ -166,6 +225,8 @@ export function useChat(preview = false) {
     sendGroup,
     createGroup,
     joinGroup,
+    deleteMessage,
+    deleteGroup,
   };
 }
 

@@ -46,3 +46,11 @@ export async function roomHistory(roomId: string, limit: number): Promise<ChatMe
   if (error) throw new Error(error.message);
   return data.map(toMessage).reverse();
 }
+
+/** Delete only the sender's message and return its room for the notification. */
+export async function deleteOwnMessage(id: string, sender: string): Promise<string | null> {
+  const { data, error } = await db.from("messages").delete()
+    .eq("id", id).eq("sender", sender).select("room_id").maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.room_id ?? null;
+}

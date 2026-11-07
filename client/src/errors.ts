@@ -10,6 +10,8 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   GROUP_NOT_FOUND: "Group not found",
   NOT_A_MEMBER: "You are not a member of this group",
   ALREADY_A_MEMBER: "You are already a member of this group",
+  FORBIDDEN: "You do not have permission to do that",
+  MESSAGE_NOT_FOUND: "Message not found or you cannot delete it",
   SERVER_ERROR: "Server error",
   NOT_IMPLEMENTED: "This feature is not available yet",
 };

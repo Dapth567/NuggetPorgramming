@@ -30,6 +30,8 @@ export type ErrorCode =
   | "GROUP_NOT_FOUND"
   | "NOT_A_MEMBER"
   | "ALREADY_A_MEMBER"
+  | "FORBIDDEN"
+  | "MESSAGE_NOT_FOUND"
   | "SERVER_ERROR"
   | "NOT_IMPLEMENTED";
 
@@ -62,10 +64,14 @@ export interface ClientToServerEvents {
   "group:create": (payload: { name: string }, ack: Reply<GroupInfo>) => void;
   "group:join": (payload: { groupId: string }, ack: Reply<GroupInfo>) => void;
   "group:send": (payload: { groupId: string; text: string }, ack: Reply<ChatMessage>) => void;
+  "group:delete": (payload: { groupId: string }, ack: Reply<void>) => void;
+  "message:delete": (payload: { messageId: string }, ack: Reply<void>) => void;
 }
 
 export interface ServerToClientEvents {
   "users:list": (names: string[]) => void;
   "groups:list": (groups: GroupInfo[]) => void;
   "message:new": (message: ChatMessage) => void;
+  "message:deleted": (payload: { messageId: string; roomId: string }) => void;
+  "group:deleted": (payload: { groupId: string }) => void;
 }

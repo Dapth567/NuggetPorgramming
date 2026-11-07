@@ -56,7 +56,10 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
             <h1>Chat with your friends.</h1>
           </div>
           <div className="hero-art" aria-hidden="true">
+            <span className="nugget-spark spark-one">✦</span>
             <img src={nugget} alt="" />
+            <span className="nugget-spark spark-two">✦</span>
+            <span className="nugget-sticker">100% chat</span>
           </div>
         </section>
       <form className="login-card" onSubmit={submit}>
@@ -121,6 +124,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const roomId = room ? (room.kind === "dm" ? dmRoomId(me, room.name) : groupRoomId(room.id)) : null;
@@ -157,6 +161,26 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
     const res = await chat.createGroup(name);
     if ("groupId" in res) setRoom({ kind: "group", id: res.groupId });
     else report(res.error);
+  };
+
+  const deleteGroup = async () => {
+    if (!group || !window.confirm(`Delete "${group.name}" and all its messages for everyone?`)) return;
+    setDeleting(true);
+    try {
+      report(await chat.deleteGroup(group.id));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const deleteMessage = async (messageId: string, messageRoomId: string) => {
+    if (!window.confirm("Delete this message for everyone?")) return;
+    setDeleting(true);
+    try {
+      report(await chat.deleteMessage(messageId, messageRoomId));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const title = room?.kind === "dm" ? room.name : group?.name;
@@ -213,9 +237,9 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
 
       <section className="chat">
         {notice && <div className="notice" role="status">{notice}</div>}
-        {!room ? (
+        {!room || (room.kind === "group" && chat.deletedGroupIds.has(room.id)) ? (
           <div className="empty">
-            <div className="empty-art"><img src={nugget} alt="" /></div>
+            <div className="empty-art"><span className="nugget-spark spark-one" aria-hidden="true">✦</span><img src={nugget} alt="" /><span className="nugget-spark spark-two" aria-hidden="true">✦</span></div>
             <h2>Pick a chat to get started</h2>
           </div>
         ) : (
@@ -226,13 +250,26 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
                 <strong>{title ?? "Group not found"}</strong>
                 <div className="sub">{subtitle}</div>
               </div>
+              {group?.createdBy === me && (
+                <button className="delete-group" type="button" disabled={deleting} onClick={deleteGroup}>
+                  Delete group
+                </button>
+              )}
             </header>
             <div className="messages">
               {current.map((m) => (
                 <div key={m.id} className={m.sender === me ? "msg mine" : "msg"}>
                   {m.sender !== me && room.kind === "group" && <div className="sender">{m.sender}</div>}
                   <div className="bubble">{m.text}</div>
-                  <div className="time">{formatTime(m.sentAt)}</div>
+                  <div className="message-meta">
+                    <span className="time">{formatTime(m.sentAt)}</span>
+                    {m.sender === me && (
+                      <button className="delete-message" type="button" disabled={deleting}
+                        aria-label="Delete message" onClick={() => deleteMessage(m.id, m.roomId)}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               <div ref={bottomRef} />
