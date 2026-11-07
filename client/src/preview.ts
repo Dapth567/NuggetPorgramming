@@ -45,3 +45,9 @@ export const PREVIEW_GAMES: Record<string, XoGame> = {
   p1: game("p1", dm, { status: "invited" }),
   p2: game("p2", group, { board: ["X", null, "O", null, "X", null, null, null, null], turn: "O" }),
 };
+
+/** Who is shown typing, by room, so the indicator can be seen without a server. */
+export const PREVIEW_TYPING: Record<string, string[]> = {
+  [dm]: ["alice"],
+  [group]: ["alice", "bob"],
+};
