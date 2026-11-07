@@ -6,9 +6,10 @@ import {
   type ChatMessage,
   type ErrorCode,
   type GroupInfo,
+  type TypingUpdate,
   type UserAvatar,
 } from "@chat/shared";
-import { PREVIEW_GROUPS, PREVIEW_ME, PREVIEW_MESSAGES, PREVIEW_USERS } from "./preview";
+import { PREVIEW_GROUPS, PREVIEW_ME, PREVIEW_MESSAGES, PREVIEW_TYPING, PREVIEW_USERS } from "./preview";
 import { socket } from "./socket";
 
 /** `null` means success; otherwise the error code from the server. */
@@ -21,6 +22,13 @@ const withGroup = (groups: GroupInfo[], group: GroupInfo) =>
   groups.some((g) => g.id === group.id)
     ? groups.map((g) => (g.id === group.id ? group : g))
     : [...groups, group];
+
+/** While typing, tell the room again this often, so its "is typing" does not expire. */
+const TYPING_REFRESH_MS = 2000;
+/** Stop showing yourself as typing after this long without a keystroke. */
+const TYPING_IDLE_MS = 3000;
+/** Forget someone else's "is typing" after this long without news, e.g. when they lost connection. */
+const TYPING_EXPIRE_MS = 5000;
 
 /**
  * The only place that talks to the socket. Components read state and call these functions.
@@ -39,17 +47,52 @@ export function useChat(preview = false) {
   const deletedMessages = useRef(new Set<string>());
   const deletedGroups = useRef(new Set<string>());
   const [deletedGroupIds, setDeletedGroupIds] = useState<Set<string>>(new Set());
+  /** Who else is typing, by room id. */
+  const [typingByRoom, setTypingByRoom] = useState<Record<string, string[]>>(preview ? PREVIEW_TYPING : {});
+  const typingExpiry = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /** The room this user is shown typing in, when the room was last told, and the idle timer. */
+  const myTyping = useRef<{ roomId: string; toldAt: number; idle?: ReturnType<typeof setTimeout> } | null>(null);
+
+  /** Stops showing `name` as typing in `roomId`. */
+  const clearTyping = useCallback((roomId: string, name: string) => {
+    const key = `${roomId}\n${name}`;
+    clearTimeout(typingExpiry.current.get(key));
+    typingExpiry.current.delete(key);
+    setTypingByRoom((prev) => {
+      const list = prev[roomId];
+      if (!list?.includes(name)) return prev;
+      return { ...prev, [roomId]: list.filter((n) => n !== name) };
+    });
+  }, []);
+
+  const onTypingUpdate = useCallback(({ roomId, name, typing }: TypingUpdate) => {
+    if (!typing) return clearTyping(roomId, name);
+    const key = `${roomId}\n${name}`;
+    clearTimeout(typingExpiry.current.get(key));
+    typingExpiry.current.set(key, setTimeout(() => clearTyping(roomId, name), TYPING_EXPIRE_MS));
+    setTypingByRoom((prev) => {
+      const list = prev[roomId] ?? [];
+      return list.includes(name) ? prev : { ...prev, [roomId]: [...list, name] };
+    });
+  }, [clearTyping]);
 
   const addMessage = useCallback((m: ChatMessage) => {
+    // Their message has arrived, so they are no longer typing it.
+    clearTyping(m.roomId, m.sender);
     if (deletedMessages.current.has(m.id) ||
         (m.roomId.startsWith("group:") && deletedGroups.current.has(m.roomId.slice(6)))) return;
     setMessagesByRoom((prev) => {
       const list = prev[m.roomId] ?? [];
       return list.some((x) => x.id === m.id) ? prev : { ...prev, [m.roomId]: [...list, m] };
     });
-  }, []);
+  }, [clearTyping]);
 
   const reset = useCallback(() => {
+    typingExpiry.current.forEach(clearTimeout);
+    typingExpiry.current.clear();
+    clearTimeout(myTyping.current?.idle);
+    myTyping.current = null;
+    setTypingByRoom({});
     deletedMessages.current.clear();
     deletedGroups.current.clear();
     setDeletedGroupIds(new Set());
@@ -107,6 +150,7 @@ export function useChat(preview = false) {
     socket.on("group:deleted", removeGroup);
     socket.on("avatars:list", onAvatars);
     socket.on("avatar:updated", updateAvatar);
+    socket.on("typing:update", onTypingUpdate);
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -117,8 +161,36 @@ export function useChat(preview = false) {
       socket.off("group:deleted", removeGroup);
       socket.off("avatars:list", onAvatars);
       socket.off("avatar:updated", updateAvatar);
+      socket.off("typing:update", onTypingUpdate);
     };
-  }, [preview, addMessage, removeMessage, removeGroup, updateAvatar, reset]);
+  }, [preview, addMessage, removeMessage, removeGroup, updateAvatar, onTypingUpdate, reset]);
+
+  /** Tells the room this user stopped typing, if it was told they started. */
+  const stopTyping = useCallback(() => {
+    const mine = myTyping.current;
+    if (!mine) return;
+    clearTimeout(mine.idle);
+    myTyping.current = null;
+    // The server drops events without a callback, so pass one even though the answer is not needed.
+    if (!preview) socket.emit("typing:set", { roomId: mine.roomId, typing: false }, () => {});
+  }, [preview]);
+
+  /**
+   * Call on every keystroke. Tells the room at most once per TYPING_REFRESH_MS, and stops by itself
+   * after TYPING_IDLE_MS without a keystroke. An empty box counts as stopping.
+   */
+  const notifyTyping = useCallback((roomId: string, hasText: boolean) => {
+    if (myTyping.current && (!hasText || myTyping.current.roomId !== roomId)) stopTyping();
+    if (!hasText) return;
+    const mine = myTyping.current ?? (myTyping.current = { roomId, toldAt: 0 });
+    const now = Date.now();
+    if (now - mine.toldAt >= TYPING_REFRESH_MS) {
+      mine.toldAt = now;
+      if (!preview) socket.emit("typing:set", { roomId, typing: true }, () => {});
+    }
+    clearTimeout(mine.idle);
+    mine.idle = setTimeout(stopTyping, TYPING_IDLE_MS);
+  }, [preview, stopTyping]);
 
   const register = useCallback(
     async (name: string, password: string): Promise<Result> =>
@@ -161,13 +233,14 @@ export function useChat(preview = false) {
 
   const send = useCallback(
     async (roomId: string, emit: () => Promise<Ack<ChatMessage>>, text: string): Promise<Result> => {
+      stopTyping();
       if (preview) {
         addMessage({ id: String(Date.now()), roomId, sender: PREVIEW_ME, text, sentAt: new Date().toISOString() });
         return null;
       }
       return toResult(await emit());
     },
-    [preview, addMessage],
+    [preview, addMessage, stopTyping],
   );
 
   const sendDm = useCallback(
@@ -245,6 +318,9 @@ export function useChat(preview = false) {
     messagesByRoom,
     avatars,
     deletedGroupIds,
+    typingByRoom,
+    notifyTyping,
+    stopTyping,
     register,
     login,
     logout,

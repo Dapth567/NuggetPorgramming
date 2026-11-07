@@ -200,6 +200,23 @@ const res = await socket.emitWithAck("profile:avatar", { image: "data:image/jpeg
 server ตรวจรูป บันทึก แล้วส่ง `avatar:updated` ให้ทุกคนที่ login แล้ว รวมผู้ส่ง
 ฟีเจอร์นี้ต้องติดตั้ง [`supabase/avatars.sql`](../supabase/avatars.sql) ใน Supabase ก่อน
 
+### `typing:set`
+
+บอกคนอื่นในห้องว่ากำลังพิมพ์ (`typing: true`) หรือหยุดพิมพ์แล้ว (`typing: false`) ไม่บันทึกลงฐานข้อมูล
+
+| รายการ | ค่า |
+| --- | --- |
+| Payload | `{ roomId: string, typing: boolean }` |
+| สำเร็จ | `data` ว่าง |
+| Error | `NOT_A_MEMBER` |
+| Requirement | Special point (แสดงว่ากำลังพิมพ์) |
+
+server ตรวจสิทธิ์ห้องโดยไม่ query ฐานข้อมูล: ห้องกลุ่มดูจากว่า socket อยู่ใน room ของกลุ่มหรือไม่ ห้อง DM ดูว่ามีชื่อผู้ส่งใน `roomId`
+จากนั้นส่ง `typing:update` ให้คนอื่นในห้องเท่านั้น ไม่ส่งกลับหาผู้ส่ง และไม่ส่งให้คนนอกห้อง
+
+React ส่ง `typing: true` ไม่เกิน 1 ครั้งทุก 2 วินาทีระหว่างพิมพ์ และส่ง `typing: false` เมื่อหยุดพิมพ์ 3 วินาที กด Send สลับห้อง หรือลบข้อความในช่องจนว่าง
+ฝั่งผู้รับลบชื่อเองถ้าไม่มี `typing:update` ใหม่ภายใน 5 วินาที (กันชื่อค้างเมื่อผู้พิมพ์หลุดการเชื่อมต่อ) และลบทันทีเมื่อได้ `message:new` จากคนนั้น
+
 ## Server ส่งถึง client
 
 | Event | ข้อมูล | ส่งเมื่อไหร่ | ส่งให้ใคร | Requirement |
@@ -211,6 +228,7 @@ server ตรวจรูป บันทึก แล้วส่ง `avatar:up
 | `group:deleted` | `{ groupId }` | กลุ่มถูกลบ | ผู้ใช้ที่ login ทั้งหมด | - |
 | `avatars:list` | `UserAvatar[]` | login | คนที่เพิ่ง login | Special |
 | `avatar:updated` | `{ name, image }` (`image` เป็น `null` เมื่อลบรูป) | มีคนเปลี่ยนรูป | ผู้ใช้ที่ login ทั้งหมด | Special |
+| `typing:update` | `{ roomId, name, typing }` | มีคนเริ่มหรือหยุดพิมพ์ | คนอื่นในห้องนั้น ไม่รวมผู้พิมพ์ | Special |
 
 `users:list` และ `groups:list` ส่งรายการเต็มทุกครั้ง ให้ React แทนที่ของเดิมได้เลย
 
