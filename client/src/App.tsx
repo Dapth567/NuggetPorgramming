@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
 import { GroupList } from "./components/GroupList";
+import nugget from "./assets/nugget.png";
 import { ERROR_TEXT } from "./errors";
 import { useChat, type ChatApi } from "./useChat";
 
 type Room = { kind: "dm"; name: string } | { kind: "group"; id: string };
+
+function Brand({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={compact ? "brand brand-compact" : "brand"}>
+      <span className="brand-mark"><img src={nugget} alt="" /></span>
+      <span className="brand-name">Nugget <span>Porgramming</span><small>BY CARTOON NETWORK</small></span>
+    </div>
+  );
+}
 
 /**
  * The rules the server checks, said plainly so the user knows what to fix.
@@ -39,18 +49,35 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
 
   return (
     <div className="login">
+      <div className="login-shell">
+        <section className="login-hero">
+          <Brand />
+          <div className="hero-copy">
+            <h1>Chat with your friends.</h1>
+          </div>
+          <div className="hero-art" aria-hidden="true">
+            <img src={nugget} alt="" />
+          </div>
+        </section>
       <form className="login-card" onSubmit={submit}>
-        <h1>Socket Chat</h1>
+        <div className="login-mobile-brand"><Brand compact /></div>
+        <h2>{mode === "login" ? "Log in" : "Sign up"}</h2>
+        <label htmlFor="username">USERNAME</label>
         <input
+          id="username"
           placeholder="Username"
+          autoComplete="username"
           value={name}
           maxLength={LIMITS.nameMaxLength}
           onChange={(e) => setName(e.target.value)}
           autoFocus
         />
+        <label htmlFor="password">PASSWORD</label>
         <input
+          id="password"
           type="password"
           placeholder="Password"
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -76,6 +103,7 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
         </button>
         {!chat.connected && <p className="hint">Connecting to server...</p>}
       </form>
+      </div>
     </div>
   );
 }
@@ -137,16 +165,17 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   return (
     <div className="app">
       <aside className="sidebar">
+        <div className="sidebar-brand"><Brand compact /></div>
         <header className="sidebar-head">
           <Avatar label={me} />
-          <strong>{me}</strong>
+          <div className="profile-name"><strong>{me}</strong></div>
           <button className="small logout" onClick={chat.logout}>
             Log out
           </button>
         </header>
         <div className="list">
           <div className="section">
-            <span>Online ({users.length})</span>
+            <span>ONLINE <span className="section-count">{users.length}</span></span>
           </div>
           {users.map((name) =>
             name === me ? (
@@ -168,7 +197,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
             ),
           )}
           <div className="section">
-            <span>Groups</span>
+            <span>GROUPS</span>
             <button className="small" onClick={createGroup}>
               + New
             </button>
@@ -183,8 +212,12 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
       </aside>
 
       <section className="chat">
+        {notice && <div className="notice" role="status">{notice}</div>}
         {!room ? (
-          <div className="empty">Select a chat to start messaging</div>
+          <div className="empty">
+            <div className="empty-art"><img src={nugget} alt="" /></div>
+            <h2>Pick a chat to get started</h2>
+          </div>
         ) : (
           <>
             <header className="chat-head">
@@ -204,7 +237,6 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               ))}
               <div ref={bottomRef} />
             </div>
-            {notice && <div className="notice">{notice}</div>}
             {isMember ? (
               <form className="composer" onSubmit={send}>
                 <input

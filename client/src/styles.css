@@ -1,149 +1,164 @@
-/* The only place colors are defined. Everything below uses these variables. */
 :root {
   color-scheme: dark;
-  --bg: #ffb84edc;
-  --panel: #161b22;
-  --raised: #1d242d;
-  --border: #262e38;
-  --text: #e6edf3;
-  --muted: #8b98a5;
-  --accent: #e78b3a;
-  --danger: #ff6b6b;
-  /* Text that sits on orange: buttons and your own bubbles use --on-accent, the chat floor uses --on-bg. */
-  --on-accent: #1f1306;
-  --on-bg: #2b1a05;
-  --on-bg-muted: #4a2f0d;
+  --bg: #191511;
+  --panel: #211b16;
+  --raised: #2e261e;
+  --border: #44372a;
+  --text: #f8edda;
+  --muted: #b6a48e;
+  --accent: #f2b94b;
+  --on-accent: #291a0d;
+  --danger: #ff9a88;
 }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  font-family: system-ui, "Segoe UI", "Noto Sans Thai", sans-serif;
+  font-family: "Segoe UI", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
 button, input { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: none; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 input {
-  background: var(--raised);
+  min-width: 0;
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 10px 14px;
-  outline: none;
+  border-radius: 12px;
+  padding: 14px 16px;
 }
 input::placeholder { color: var(--muted); }
 input:focus { border-color: var(--accent); }
-button { cursor: pointer; border: 0; background: none; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .primary {
   background: var(--accent);
   color: var(--on-accent);
-  border-radius: 20px;
-  padding: 10px 20px;
-  font-weight: 600;
+  border-radius: 12px;
+  padding: 14px 22px;
+  font-weight: 750;
   transition: filter 0.15s, transform 0.15s;
 }
-.primary:hover:not(:disabled) { filter: brightness(1.12); }
-.primary:active:not(:disabled) { transform: translateY(1px); filter: brightness(0.95); }
-.link { color: var(--muted); font-size: 0.9rem; transition: color 0.15s; }
-.link:hover { color: var(--text); text-decoration: underline; }
-.small { color: var(--accent); font-weight: 600; font-size: 0.85rem; transition: filter 0.15s; }
-.small:hover { filter: brightness(1.2); text-decoration: underline; }
+.primary:hover:not(:disabled) { filter: brightness(1.1); }
+.primary:active:not(:disabled) { transform: translateY(1px); }
+.link { color: var(--muted); font-size: 0.85rem; }
+.link:hover { color: var(--accent); }
+.small { color: var(--accent); font-weight: 700; font-size: 0.78rem; }
+.small:hover { text-decoration: underline; }
 .error, .notice { color: var(--danger); }
-.error { margin: 0; font-size: 0.9rem; }
-.hint { color: var(--muted); margin: 0; font-size: 0.85rem; text-align: center; }
+.error { margin: 0; font-size: 0.85rem; }
+.hint { color: var(--muted); margin: 0; font-size: 0.78rem; line-height: 1.5; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 
-.login { height: 100%; display: grid; place-items: center; background: var(--bg); }
-.login-card {
-  width: min(320px, 100% - 32px);
-  background: var(--panel);
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 15px; background: var(--raised); flex-shrink: 0; }
+.brand-mark img { width: 42px; height: 42px; object-fit: contain; transform: rotate(-12deg); }
+.brand-name { min-width: 0; font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+.brand-name > span { color: var(--accent); }
+.brand-name small { display: block; color: var(--muted); font-size: 0.6rem; font-weight: 600; letter-spacing: 0.04em; margin-top: 5px; }
+.brand-compact .brand-mark { width: 40px; height: 40px; border-radius: 13px; }
+.brand-compact .brand-mark img { width: 37px; height: 37px; }
+.brand-compact .brand-name { font-size: 0.95rem; }
+
+.login {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--bg);
+}
+.login-shell {
+  width: min(1050px, 100%);
+  min-height: 500px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 32px 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  background: var(--panel);
 }
-.login-card h1 { margin: 0 0 8px; text-align: center; color: var(--accent); font-size: 1.6rem; }
+.login-hero { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 38px 44px 30px; background: var(--raised); }
+.hero-copy { margin-top: 50px; }
+.hero-copy h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1.2; }
+.hero-art { position: relative; display: grid; place-items: center; flex: 1; min-height: 220px; }
+.hero-art img { width: min(220px, 65%); transform: rotate(10deg); }
+.login-card { display: flex; flex-direction: column; justify-content: center; padding: 48px; gap: 12px; }
+.login-mobile-brand { display: none; }
+.login-card h2 { margin: 0 0 16px; font-size: 1.8rem; }
+.login-card label { color: var(--muted); font-size: 0.65rem; font-weight: 800; letter-spacing: 0.12em; margin-top: 6px; }
+.login-card .primary { margin-top: 12px; }
+.login-card .link { margin-top: 6px; }
 
-/* Full width on every screen; dvh keeps the composer above a phone's address bar. */
-.app { height: 100%; height: 100dvh; display: flex; background: var(--panel); }
-.sidebar { width: clamp(240px, 24vw, 340px); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
-.sidebar-head { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
-.list { overflow-y: auto; flex: 1; }
-.section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px 6px;
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-.item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px; text-align: left; }
+.app { height: 100%; height: 100dvh; display: flex; background: var(--bg); }
+.sidebar { width: clamp(260px, 25vw, 330px); min-height: 0; border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-brand { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 24px 20px; border-bottom: 1px solid var(--border); }
+.sidebar-head { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.profile-name { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.profile-name strong { overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem; }
+.logout { margin-left: auto; white-space: nowrap; }
+.list { overflow-y: auto; flex: 1; padding: 8px 10px 20px; }
+.section { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 20px 10px 10px; color: var(--muted); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.12em; }
+.section-count { color: var(--accent); margin-left: 4px; }
+.item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; text-align: left; border-radius: 12px; }
 .item:hover, .item.active { background: var(--raised); }
 .item.active { box-shadow: inset 3px 0 0 var(--accent); }
 .item.self { cursor: default; }
-.item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.logout { margin-left: auto; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
-.count { font-size: 0.8rem; color: var(--muted); }
+.item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; font-weight: 600; }
+.count { font-size: 0.75rem; color: var(--muted); }
+.avatar { width: 40px; height: 40px; border-radius: 14px; background: var(--raised); border: 1px solid var(--border); color: var(--accent); display: grid; place-items: center; font-weight: 750; flex-shrink: 0; }
+.avatar.group { color: var(--on-accent); background: var(--accent); }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.avatar.group { color: var(--accent); }
-
-.chat { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
-.empty { margin: auto; color: var(--on-bg-muted); font-weight: 500; }
-.chat-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-}
-.sub { font-size: 0.8rem; color: var(--muted); max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.msg { display: flex; flex-direction: column; align-items: flex-start; max-width: min(70%, 640px); }
+.chat { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg); }
+.empty { margin: auto; padding: 24px; text-align: center; }
+.empty-art { width: 160px; height: 160px; display: grid; place-items: center; margin: 0 auto 16px; }
+.empty-art img { width: 150px; transform: rotate(-10deg); }
+.empty h2 { font-size: 1.2rem; margin: 0; color: var(--muted); font-weight: 600; }
+.chat-head { display: flex; align-items: center; gap: 12px; min-height: 82px; padding: 16px 28px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.chat-head strong { font-size: 0.98rem; }
+.sub { font-size: 0.76rem; color: var(--muted); max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
+.messages { flex: 1; overflow-y: auto; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; flex-direction: column; align-items: flex-start; max-width: min(75%, 640px); }
 .msg.mine { align-self: flex-end; align-items: flex-end; }
-.sender { font-size: 0.75rem; font-weight: 600; color: var(--on-bg-muted); margin: 0 0 2px 4px; }
-.bubble {
-  background: var(--raised);
-  padding: 8px 14px;
-  border-radius: 18px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.mine .bubble { background: var(--accent); color: var(--on-accent); }
-.time { font-size: 0.7rem; color: var(--on-bg-muted); margin: 2px 4px 0; }
-.notice {
-  align-self: center;
-  margin: 0 16px 8px;
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  text-align: center;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-.composer { display: flex; gap: 8px; padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--border); }
-/* min-width: 0 lets the input shrink on a phone instead of pushing Send off the screen. */
-.composer input { flex: 1; min-width: 0; }
+.sender { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin: 0 0 4px 5px; }
+.bubble { background: var(--raised); border: 1px solid var(--border); padding: 12px 16px; border-radius: 16px 16px 16px 4px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.mine .bubble { background: var(--accent); color: var(--on-accent); border-color: var(--accent); border-radius: 16px 16px 4px 16px; }
+.time { font-size: 0.68rem; color: var(--muted); margin: 4px 5px 0; }
+.notice { align-self: center; margin: 12px 16px 0; padding: 8px 12px; font-size: 0.85rem; text-align: center; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+.composer { display: flex; gap: 10px; padding: 16px 28px 22px; background: var(--panel); border-top: 1px solid var(--border); }
+.composer input { flex: 1; }
 .composer.join { justify-content: center; }
 
-@media (max-width: 700px) {
-  .sidebar { width: 100px; }
-  .logout, .item-name, .count, .sidebar-head strong, .section span { display: none; }
-  .item, .sidebar-head { justify-content: center; padding-inline: 8px; }
+@media (max-width: 760px) {
+  .login { padding: 20px; }
+  .login-shell { display: block; min-height: 0; max-width: 440px; }
+  .login-hero { display: none; }
+  .login-card { padding: 32px 26px; }
+  .login-mobile-brand { display: block; margin-bottom: 28px; }
+  .sidebar { width: 150px; }
+  .sidebar-brand { padding: 16px 10px; }
+  .count { display: none; }
+  .sidebar-brand .brand { gap: 6px; }
+  .sidebar-brand .brand-name { font-size: 0.75rem; overflow-wrap: anywhere; }
+  .sidebar-brand .brand-name small { font-size: 0.5rem; }
+  .sidebar-head { padding: 12px 10px; flex-wrap: wrap; }
+  .profile-name { flex: 1; }
+  .logout { margin: 0; }
+  .list { padding-inline: 5px; }
+  .section { padding-inline: 6px; }
+  .item { gap: 7px; padding: 8px 5px; }
+  .item-name { font-size: 0.78rem; }
+  .chat-head { padding: 12px; }
+  .messages { padding: 16px 12px; }
+  .composer { padding: 12px; }
+  .composer .primary { padding-inline: 14px; }
+  .empty-art { width: 120px; height: 120px; margin-bottom: 16px; }
+  .empty-art img { width: 110px; }
+  .empty h2 { font-size: 1rem; }
+}
+@media (max-width: 380px) {
+  .sidebar { width: 125px; }
+  .sidebar-brand .brand-name { font-size: 0.7rem; }
+  .brand-compact .brand-mark { width: 32px; height: 32px; }
+  .brand-compact .brand-mark img { width: 30px; height: 30px; }
+  .avatar { width: 34px; height: 34px; }
 }

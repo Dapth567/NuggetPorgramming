@@ -1,6 +1,6 @@
-# Socket Chat
+# Nugget Porgramming
 
-เว็บแอปแชตแบบ LINE สำหรับ Term Project วิชา Computer Network มีทั้ง direct message และ group chat
+Nugget Porgramming โดยกลุ่ม CARTOON NETWORK เป็นเว็บแอปแชตสำหรับ Term Project วิชา Computer Network มีทั้ง direct message และ group chat
 ข้อความแชตระหว่าง client กับ server ทั้งหมดวิ่งผ่าน WebSocket
 
 ## เอกสารของกลุ่ม
@@ -79,4 +79,4 @@ npm run check:db     # ทดสอบการเชื่อมต่อ Supab
 | R3-R11 | เสร็จแล้ว ทดสอบบนหน้าเว็บจริงแล้ว |
 | Special points 1-4 | ยังไม่ได้เลือก (ต้องมี AI อย่างน้อย 1 ข้อ) |
 
-#i love nugget
+# i love nugget

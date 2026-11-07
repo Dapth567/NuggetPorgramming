@@ -161,6 +161,8 @@ React component
 | ไฟล์ | สถานะ | หน้าที่ | Requirement |
 | --- | --- | --- | --- |
 | `client/index.html` | มีแล้ว | หน้า HTML หลัก | - |
+| `client/assets/nugget.png` | มีแล้ว | รูปนั้กเก็ตต้นฉบับสำหรับธีม Nugget Porgramming | - |
+| `client/src/assets/nugget.png` | มีแล้ว | รูปนั้กเก็ตขนาดลดลงที่หน้าเว็บและ favicon ใช้ | - |
 | `client/vite.config.ts` | มีแล้ว | ตั้งค่า Vite | - |
 | `client/src/main.tsx` | มีแล้ว | render `<App />` ไม่ต้องแก้ นอกจาก import `styles.css` | - |
 | `client/src/socket.ts` | มีแล้ว | การเชื่อมต่อ Socket.IO อันเดียวของทั้งเว็บ (websocket เท่านั้น) ห้ามสร้างการเชื่อมต่อใหม่ที่อื่น | R1, R2 |
