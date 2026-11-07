@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { dmRoomId, groupRoomId, LIMITS, type ErrorCode } from "@chat/shared";
+import { GroupList } from "./components/GroupList";
 import { ERROR_TEXT } from "./errors";
 import { useChat, type ChatApi } from "./useChat";
 
@@ -152,17 +153,12 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               + New
             </button>
           </div>
-          {groups.map((g) => (
-            <button
-              key={g.id}
-              className={room?.kind === "group" && room.id === g.id ? "item active" : "item"}
-              onClick={() => setRoom({ kind: "group", id: g.id })}
-            >
-              <Avatar label={g.name} group />
-              <span className="item-name">{g.name}</span>
-              <span className="count">{g.members.length}</span>
-            </button>
-          ))}
+          <GroupList
+            groups={groups}
+            me={me}
+            activeId={room?.kind === "group" ? room.id : undefined}
+            onOpen={(id) => setRoom({ kind: "group", id })}
+          />
         </div>
       </aside>
 

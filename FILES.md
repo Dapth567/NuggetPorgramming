@@ -109,7 +109,7 @@ React component
 | ไฟล์ | สถานะ | หน้าที่ | Requirement |
 | --- | --- | --- | --- |
 | `server/src/index.ts` | มีแล้ว | จุดเริ่มต้น เปิด server ที่ `0.0.0.0:3000` ให้เครื่องอื่นต่อเข้ามาได้ ไม่ต้องแก้ | R1 |
-| `server/src/chat-server.ts` | มีแล้ว | สร้าง Socket.IO server แบบ websocket เท่านั้น และเรียก `register*Handlers` ทุกตัว ทิ้ง event ที่ส่งมาโดยไม่มี callback (กัน server ล่ม) ถ้าเพิ่ม handler ใหม่ให้มาลงทะเบียนที่นี่ ห้ามเขียน logic ของ event ในไฟล์นี้ | R1, R2 |
+| `server/src/chat-server.ts` | มีแล้ว | สร้าง Socket.IO server แบบ websocket เท่านั้น และเรียก `register*Handlers` ทุกตัว ทิ้ง event ที่ไม่ได้ส่งมาเป็น (payload, callback) พอดี (กัน server ล่ม) ถ้าเพิ่ม handler ใหม่ให้มาลงทะเบียนที่นี่ ห้ามเขียน logic ของ event ในไฟล์นี้ | R1, R2 |
 | `server/src/state.ts` | มีแล้ว | ข้อมูลในหน่วยความจำ ตอนนี้มี `onlineUsers` (ชื่อ -> socket id) ถ้าต้องเก็บสถานะที่ไม่ลงฐานข้อมูล (เช่น ใครกำลังพิมพ์) ให้เพิ่มที่นี่ | R3, R4 |
 | `server/src/types.ts` | มีแล้ว | type `ChatServer`, `ChatSocket`, `SocketData` และค่า `NOT_IMPLEMENTED` | - |
 | `server/src/db.ts` | มีแล้ว | สร้าง Supabase client ใช้ได้เฉพาะในโฟลเดอร์ `repo/` | - |
@@ -148,7 +148,7 @@ React component
 
 | ไฟล์ | สถานะ | ทดสอบอะไร | Requirement |
 | --- | --- | --- | --- |
-| `server/test/chat-server.test.ts` | มีแล้ว | ต่อได้ด้วย websocket, ปฏิเสธ polling, ack ทำงาน, event ที่ไม่มี callback ไม่ทำให้ server ล่ม, `dmRoomId`, `NAME_PATTERN` | R2 |
+| `server/test/chat-server.test.ts` | มีแล้ว | ต่อได้ด้วย websocket, ปฏิเสธ polling, ack ทำงาน, event ที่ไม่มี callback, callback อยู่ผิดช่อง หรือ argument เกิน ไม่ทำให้ server ล่ม, `dmRoomId`, `NAME_PATTERN` | R2 |
 | `server/test/helpers.ts` | มีแล้ว | เปิด server ชั่วคราว สร้าง client ที่ login แล้ว สุ่มชื่อผู้ใช้ทดสอบ ใช้ร่วมกันทุกไฟล์ทดสอบ | - |
 | `server/test/auth.test.ts` | มีแล้ว | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด | R3, R4 |
 | `server/test/dm.test.ts` | มีแล้ว | ผู้ส่งและผู้รับได้ `message:new` แต่คนที่สามไม่ได้, ส่งหาตัวเองไม่ได้ | R5, R7 |
@@ -165,13 +165,13 @@ React component
 | `client/src/main.tsx` | มีแล้ว | render `<App />` ไม่ต้องแก้ นอกจาก import `styles.css` | - |
 | `client/src/socket.ts` | มีแล้ว | การเชื่อมต่อ Socket.IO อันเดียวของทั้งเว็บ (websocket เท่านั้น) ห้ามสร้างการเชื่อมต่อใหม่ที่อื่น | R1, R2 |
 | `client/src/App.tsx` | มีแล้ว (TODO) | เรียก `useChat()` แล้วเลือกหน้า: ยังไม่ login แสดง `LoginPage` login แล้วแสดง `ChatPage` ตอนนี้แสดงแค่สถานะการเชื่อมต่อ | - |
-| `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack | R3-R11 |
+| `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack แต่กลุ่มจาก ack ของ `group:create` และ `group:join` ใส่ใน `groups` ทันที ไม่ต้องรอ `groups:list` | R3-R11 |
 | `client/src/errors.ts` | ยังไม่มี | แปลง `ErrorCode` เป็นข้อความภาษาไทยที่แสดงให้ผู้ใช้ | - |
 | `client/src/styles.css` | ยังไม่มี | style ทั้งเว็บ ไฟล์เดียว ถ้ายาวมากค่อยแยกตาม component | R6 |
 | `client/src/pages/LoginPage.tsx` | ยังไม่มี | ฟอร์มชื่อและรหัสผ่าน ปุ่มสมัครและปุ่ม login แสดง error เช่นชื่อซ้ำ | R3 |
 | `client/src/pages/ChatPage.tsx` | ยังไม่มี | layout หลังจาก login: แถบข้าง (`UserList`, `GroupList`, `CreateGroupForm`) และพื้นที่ห้องที่เปิด (`ChatRoom`) พร้อมปุ่ม logout | R4-R11 |
 | `client/src/components/UserList.tsx` | ยังไม่มี | รายชื่อคนออนไลน์รวมชื่อตัวเอง (ทำเครื่องหมายว่า "คุณ") กดชื่อคนอื่นเพื่อเปิดห้อง DM | R4, R7 |
-| `client/src/components/GroupList.tsx` | มีแล้ว (แสดงกลุ่มพร้อมชื่อสมาชิก รอ `App.tsx` เรียกใช้ ปุ่ม Join ยังอยู่ในหน้าแชต) | รายการทุกกลุ่มพร้อมรายชื่อสมาชิก ปุ่ม Join สำหรับกลุ่มที่ยังไม่ได้เข้า กดกลุ่มที่เป็นสมาชิกเพื่อเปิดห้อง | R9, R10, R11 |
+| `client/src/components/GroupList.tsx` | มีแล้ว (แสดงกลุ่มพร้อมชื่อสมาชิกในแถบข้างของ `App.tsx` ปุ่ม Join ยังอยู่ในหน้าแชต) | รายการทุกกลุ่มพร้อมรายชื่อสมาชิก ปุ่ม Join สำหรับกลุ่มที่ยังไม่ได้เข้า กดกลุ่มที่เป็นสมาชิกเพื่อเปิดห้อง | R9, R10, R11 |
 | `client/src/components/CreateGroupForm.tsx` | ยังไม่มี | ช่องตั้งชื่อกลุ่มและปุ่มสร้าง ห้ามมีช่องเลือกสมาชิก | R8 |
 | `client/src/components/ChatRoom.tsx` | ยังไม่มี | ห้องแชตหนึ่งห้อง ใช้ทั้ง DM และกลุ่ม แสดงชื่อห้องด้านบน `MessageList` ตรงกลาง `MessageInput` ด้านล่าง | R5, R6 |
 | `client/src/components/MessageList.tsx` | ยังไม่มี | chat window แสดงข้อความที่ส่งไปและข้อความใหม่ที่เข้ามา พร้อมชื่อผู้ส่งและเวลา เลื่อนลงล่างสุดเมื่อมีข้อความใหม่ | R6 |

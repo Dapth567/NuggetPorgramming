@@ -22,13 +22,14 @@ export function GroupList({
             className={g.id === activeId ? "item active" : "item"}
             onClick={() => onOpen(g.id)}
           >
-            <div className="avatar group">{g.name.slice(0, 1).toUpperCase()}</div>
-            <div className="item-name">
+            {/* Only phrasing content such as <span> is valid inside a <button>. */}
+            <span className="avatar group">{g.name.slice(0, 1).toUpperCase()}</span>
+            <span className="item-name">
               {g.name}
-              <div className="sub" title={members}>
+              <span className="sub" style={{ display: "block" }} title={members}>
                 {members}
-              </div>
-            </div>
+              </span>
+            </span>
             <span className="count">{g.members.length}</span>
           </button>
         );

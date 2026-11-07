@@ -6,6 +6,8 @@ import { addMember, createGroup } from "../src/repo/groups.js";
 import {
   deleteTestData,
   login,
+  loginNewUser,
+  nextGroup,
   nextMessage,
   randomName,
   recordMessages,
@@ -26,9 +28,9 @@ async function registered() {
 }
 
 async function loggedIn() {
-  const user = await registered();
-  await login(user.client, user.name);
-  return user;
+  const created = await loginNewUser(server.url);
+  names.push(created.name);
+  return created;
 }
 
 /** Creates a group through the socket, the way the app does. */
@@ -37,19 +39,6 @@ async function create(client: TestClient, name = randomName("g")): Promise<Group
   assert.ok(res.ok, `group:create failed: ${res.ok ? "" : res.error}`);
   groupIds.push(res.data.id);
   return res.data;
-}
-
-/** Resolves to the group with this name from the next `groups:list` that has it. */
-function groupInNextList(client: TestClient, name: string) {
-  return new Promise<GroupInfo>((resolve) => {
-    const onList = (groups: GroupInfo[]) => {
-      const group = groups.find((g) => g.name === name);
-      if (!group) return;
-      client.off("groups:list", onList);
-      resolve(group);
-    };
-    client.on("groups:list", onList);
-  });
 }
 
 /** A group of alice and bob with carol outside. Login comes last so sockets join the group room. */
@@ -167,7 +156,7 @@ test("the creator can chat in a new group without logging in again (R8, R11)", a
 test("every logged-in client sees a new group with its members (R9)", async () => {
   const [creator, viewer] = [await loggedIn(), await loggedIn()];
   const groupName = randomName("g");
-  const seen = groupInNextList(viewer.client, groupName);
+  const seen = nextGroup(viewer.client, (g) => g.name === groupName);
   const group = await create(creator.client, groupName);
   assert.deepEqual(await seen, group);
   [creator, viewer].forEach(({ client }) => client.close());
@@ -178,7 +167,7 @@ test("a client that logs in later gets every group, even ones it is not in (R9)"
   const group = await create(creator.client);
 
   const late = await registered();
-  const seen = groupInNextList(late.client, group.name);
+  const seen = nextGroup(late.client, (g) => g.id === group.id);
   await login(late.client, late.name);
   assert.deepEqual(await seen, group);
   [creator, late].forEach(({ client }) => client.close());

@@ -15,10 +15,10 @@ export function createChatServer() {
   io.on("connection", (socket) => {
     console.log(`[connect] ${socket.id} from ${socket.handshake.address}`);
 
-    // Every client event expects a reply. Without a callback a handler would call a missing
-    // ack and crash the whole server, so such events are dropped here for every handler.
+    // Every client event is (payload, ack). Any other shape would make a handler call a missing
+    // ack and crash the whole server, so it is dropped here for every handler.
     socket.use((event, next) => {
-      if (typeof event[event.length - 1] === "function") next();
+      if (event.length === 3 && typeof event[2] === "function") next();
     });
 
     registerAuthHandlers(io, socket);

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
-import { groupRoomId, type GroupInfo } from "@chat/shared";
+import { groupRoomId } from "@chat/shared";
 import { createGroup } from "../src/repo/groups.js";
 import {
   connectClient,
   deleteTestData,
   loginNewUser,
+  nextGroup,
   nextMessage,
   recordMessages,
   startServer,
@@ -33,16 +34,11 @@ async function groupOf(owner: string) {
 
 /** Wait for a `groups:list` in which this group has these members. */
 function nextGroupMembers(client: TestClient, groupId: string, members: string[]) {
-  return new Promise<GroupInfo>((resolve) => {
-    const onList = (groups: GroupInfo[]) => {
-      const group = groups.find((g) => g.id === groupId);
-      if (!group || group.members.length !== members.length) return;
-      if (!members.every((m) => group.members.includes(m))) return;
-      client.off("groups:list", onList);
-      resolve(group);
-    };
-    client.on("groups:list", onList);
-  });
+  return nextGroup(
+    client,
+    (g) =>
+      g.id === groupId && g.members.length === members.length && members.every((m) => g.members.includes(m)),
+  );
 }
 
 before(async () => {

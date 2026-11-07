@@ -15,6 +15,12 @@ export type Result = ErrorCode | null;
 
 const toResult = (res: Ack<unknown>): Result => (res.ok ? null : res.error);
 
+/** Adds or replaces one group, so a group from an ack shows before the next `groups:list`. */
+const withGroup = (groups: GroupInfo[], group: GroupInfo) =>
+  groups.some((g) => g.id === group.id)
+    ? groups.map((g) => (g.id === group.id ? group : g))
+    : [...groups, group];
+
 /**
  * The only place that talks to the socket. Components read state and call these functions.
  * Messages are shown from `message:new` only, never added from an ack.
@@ -129,7 +135,9 @@ export function useChat(preview = false) {
     async (name: string): Promise<{ groupId: string } | { error: ErrorCode }> => {
       if (preview) return { error: "NOT_IMPLEMENTED" };
       const res = await socket.emitWithAck("group:create", { name });
-      return res.ok ? { groupId: res.data.id } : { error: res.error };
+      if (!res.ok) return { error: res.error };
+      setGroups((prev) => withGroup(prev, res.data));
+      return { groupId: res.data.id };
     },
     [preview],
   );
@@ -137,7 +145,9 @@ export function useChat(preview = false) {
   const joinGroup = useCallback(
     async (groupId: string): Promise<Result> => {
       if (preview) return null;
-      return toResult(await socket.emitWithAck("group:join", { groupId }));
+      const res = await socket.emitWithAck("group:join", { groupId });
+      if (res.ok) setGroups((prev) => withGroup(prev, res.data));
+      return toResult(res);
     },
     [preview],
   );
