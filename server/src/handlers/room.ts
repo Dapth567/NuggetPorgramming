@@ -16,7 +16,7 @@ const DM_PREFIX = "dm:";
 const GROUP_PREFIX = "group:";
 
 /** Returns the reason this user may not read the room, or `null` when access is allowed. */
-async function denyRoomAccess(name: string, roomId: string): Promise<Ack<never> | null> {
+export async function denyRoomAccess(name: string, roomId: string): Promise<Ack<never> | null> {
   if (roomId.startsWith(DM_PREFIX)) {
     const [first, second, ...rest] = roomId.slice(DM_PREFIX.length).split("|");
     const wellFormed =

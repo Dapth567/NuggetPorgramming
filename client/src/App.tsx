@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
 import { toAvatar } from "./avatar";
 import { GroupList } from "./components/GroupList";
+import { invitesFor, XoBadge, XoGameCard, XoInviteButton } from "./components/XoGame";
 import nugget from "./assets/nugget.png";
 import { ERROR_TEXT } from "./errors";
 import { useChat, type ChatApi } from "./useChat";
@@ -142,6 +143,11 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const group = room?.kind === "group" ? groups.find((g) => g.id === room.id) : undefined;
   const isMember = room?.kind === "dm" || group?.members.includes(me) === true;
   const current = roomId ? (messagesByRoom[roomId] ?? []) : [];
+  // An invite you declined in a group stays open for the others, so only you stop seeing it.
+  const roomGames = Object.values(chat.games).filter(
+    (g) => g.roomId === roomId && !(g.status === "invited" && g.declined.includes(me)),
+  );
+  const invites = invitesFor(chat.games, me);
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -159,7 +165,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [current.length, roomId]);
+  }, [current.length, roomId, roomGames.length]);
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
@@ -265,6 +271,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               >
                 <Avatar label={name} image={avatars.get(name)} />
                 <span className="item-name">{name}</span>
+                {invites.has(dmRoomId(me, name)) && <XoBadge />}
                 <span className="dot" />
               </button>
             ),
@@ -279,6 +286,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
             groups={groups}
             me={me}
             activeId={room?.kind === "group" ? room.id : undefined}
+            invites={invites}
             onOpen={(id) => setRoom({ kind: "group", id })}
           />
         </div>
@@ -338,10 +346,14 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
                   </div>
                 );
               })}
+              {roomGames.map((g) => (
+                <XoGameCard key={g.id} game={g} me={me} chat={chat} report={report} />
+              ))}
               <div ref={bottomRef} />
             </div>
             {isMember ? (
               <form className="composer" onSubmit={send}>
+                <XoInviteButton chat={chat} me={me} roomId={roomId} report={report} />
                 <input
                   placeholder="Type a message"
                   value={text}

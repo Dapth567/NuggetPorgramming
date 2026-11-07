@@ -7,8 +7,9 @@ import {
   type ErrorCode,
   type GroupInfo,
   type UserAvatar,
+  type XoGame,
 } from "@chat/shared";
-import { PREVIEW_GROUPS, PREVIEW_ME, PREVIEW_MESSAGES, PREVIEW_USERS } from "./preview";
+import { PREVIEW_GAMES, PREVIEW_GROUPS, PREVIEW_ME, PREVIEW_MESSAGES, PREVIEW_USERS } from "./preview";
 import { socket } from "./socket";
 
 /** `null` means success; otherwise the error code from the server. */
@@ -39,6 +40,12 @@ export function useChat(preview = false) {
   const deletedMessages = useRef(new Set<string>());
   const deletedGroups = useRef(new Set<string>());
   const [deletedGroupIds, setDeletedGroupIds] = useState<Set<string>>(new Set());
+  /** XO games by id, kept after they end so the result stays on screen until dismissed. */
+  const [games, setGames] = useState<Record<string, XoGame>>(preview ? PREVIEW_GAMES : {});
+
+  const addGame = useCallback((game: XoGame) => {
+    setGames((prev) => ({ ...prev, [game.id]: game }));
+  }, []);
 
   const addMessage = useCallback((m: ChatMessage) => {
     if (deletedMessages.current.has(m.id) ||
@@ -58,6 +65,7 @@ export function useChat(preview = false) {
     setGroups([]);
     setMessagesByRoom({});
     setAvatars(new Map());
+    setGames({});
   }, []);
 
   const updateAvatar = useCallback(({ name, image }: { name: string; image: string | null }) => {
@@ -86,6 +94,10 @@ export function useChat(preview = false) {
       delete next[groupRoomId(groupId)];
       return next;
     });
+    // The server drops the group's games too, so no `game:update` comes for them.
+    setGames((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([, g]) => g.roomId !== groupRoomId(groupId))),
+    );
   }, []);
 
   // Listeners go in before login, or the first `users:list` and `groups:list` would be missed.
@@ -107,6 +119,7 @@ export function useChat(preview = false) {
     socket.on("group:deleted", removeGroup);
     socket.on("avatars:list", onAvatars);
     socket.on("avatar:updated", updateAvatar);
+    socket.on("game:update", addGame);
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -117,8 +130,9 @@ export function useChat(preview = false) {
       socket.off("group:deleted", removeGroup);
       socket.off("avatars:list", onAvatars);
       socket.off("avatar:updated", updateAvatar);
+      socket.off("game:update", addGame);
     };
-  }, [preview, addMessage, removeMessage, removeGroup, updateAvatar, reset]);
+  }, [preview, addMessage, removeMessage, removeGroup, updateAvatar, addGame, reset]);
 
   const register = useCallback(
     async (name: string, password: string): Promise<Result> =>
@@ -143,9 +157,14 @@ export function useChat(preview = false) {
   const openRoom = useCallback(
     async (roomId: string): Promise<Result> => {
       if (preview) return null;
-      const res = await socket.emitWithAck("room:history", { roomId });
+      // Open games come with the history, so an invite sent before the room was opened still shows.
+      const [res, open] = await Promise.all([
+        socket.emitWithAck("room:history", { roomId }),
+        socket.emitWithAck("game:list", { roomId }),
+      ]);
+      if (roomId.startsWith("group:") && deletedGroups.current.has(roomId.slice(6))) return null;
+      if (open.ok) open.data.forEach(addGame);
       if (res.ok) {
-        if (roomId.startsWith("group:") && deletedGroups.current.has(roomId.slice(6))) return null;
         // Keep anything `message:new` delivered while the history was loading.
         setMessagesByRoom((prev) => {
           const history = res.data.filter((m) => !deletedMessages.current.has(m.id));
@@ -154,9 +173,9 @@ export function useChat(preview = false) {
           return { ...prev, [roomId]: [...history, ...newer] };
         });
       }
-      return toResult(res);
+      return toResult(res.ok ? open : res);
     },
-    [preview],
+    [preview, addGame],
   );
 
   const send = useCallback(
@@ -237,6 +256,38 @@ export function useChat(preview = false) {
     return toResult(await socket.emitWithAck("profile:avatar", { image }));
   }, [preview, updateAvatar]);
 
+  /** Every game action answers with the game's new state, shown at once. */
+  const play = useCallback(
+    async (emit: () => Promise<Ack<XoGame>>): Promise<Result> => {
+      if (preview) return "NOT_IMPLEMENTED";
+      const res = await emit();
+      if (res.ok) addGame(res.data);
+      return toResult(res);
+    },
+    [preview, addGame],
+  );
+
+  const inviteGame = useCallback(
+    (roomId: string) => play(() => socket.emitWithAck("game:invite", { roomId })),
+    [play],
+  );
+  const respondGame = useCallback(
+    (gameId: string, accept: boolean) => play(() => socket.emitWithAck("game:respond", { gameId, accept })),
+    [play],
+  );
+  const moveGame = useCallback(
+    (gameId: string, cell: number) => play(() => socket.emitWithAck("game:move", { gameId, cell })),
+    [play],
+  );
+  const leaveGame = useCallback(
+    (gameId: string) => play(() => socket.emitWithAck("game:leave", { gameId })),
+    [play],
+  );
+  /** Hides a finished game's card. */
+  const dismissGame = useCallback((gameId: string) => {
+    setGames(({ [gameId]: _, ...rest }) => rest);
+  }, []);
+
   return {
     connected: preview || connected,
     me,
@@ -256,6 +307,12 @@ export function useChat(preview = false) {
     deleteMessage,
     deleteGroup,
     changeAvatar,
+    games,
+    inviteGame,
+    respondGame,
+    moveGame,
+    leaveGame,
+    dismissGame,
   };
 }
 

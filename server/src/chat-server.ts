@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { registerAuthHandlers } from "./handlers/auth.js";
 import { registerDmHandlers } from "./handlers/dm.js";
+import { registerGameHandlers } from "./handlers/game.js";
 import { registerGroupHandlers } from "./handlers/group.js";
 import { registerProfileHandlers } from "./handlers/profile.js";
 import { registerRoomHandlers } from "./handlers/room.js";
@@ -27,6 +28,7 @@ export function createChatServer() {
     registerGroupHandlers(io, socket);
     registerProfileHandlers(io, socket);
     registerRoomHandlers(io, socket);
+    registerGameHandlers(io, socket);
 
     socket.on("disconnect", (reason) => {
       console.log(`[disconnect] ${socket.id} (${reason})`);

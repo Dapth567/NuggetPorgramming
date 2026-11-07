@@ -14,4 +14,8 @@ export const ERROR_TEXT: Record<ErrorCode, string> = {
   MESSAGE_NOT_FOUND: "Message not found or you cannot delete it",
   SERVER_ERROR: "Server error",
   NOT_IMPLEMENTED: "This feature is not available yet",
+  GAME_NOT_FOUND: "This game is no longer available",
+  NOT_YOUR_TURN: "It's not your turn",
+  ALREADY_IN_GAME: "Finish or cancel your current game first",
+  USER_OFFLINE: "This user is offline",
 };

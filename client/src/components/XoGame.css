@@ -1,0 +1,146 @@
+/* XO game. Colors only come from the variables in styles.css, so the card follows the theme. */
+
+.xo-card {
+  align-self: center;
+  width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  animation: xo-in 0.3s ease-out;
+}
+
+.xo-head { display: flex; align-items: center; justify-content: space-between; min-height: 26px; }
+.xo-title { font-weight: 800; letter-spacing: 0.04em; color: var(--accent); white-space: nowrap; }
+.xo-players { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.xo-vs { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.xo-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: calc(50% - 16px);
+  padding: 3px 10px 3px 4px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.xo-player.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.xo-player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xo-chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.xo-chip.x { background: var(--accent); color: var(--on-accent); }
+.xo-chip.o { background: var(--text); color: var(--panel); }
+.xo-close { width: 26px; height: 26px; border-radius: 50%; color: var(--muted); flex-shrink: 0; }
+.xo-close:hover { background: var(--raised); color: var(--text); }
+
+.xo-status { margin: 0; min-height: 1.4em; text-align: center; font-weight: 700; }
+.xo-status.turn { color: var(--accent); animation: xo-pulse 1.4s ease-in-out infinite; }
+.xo-status.wait, .xo-status.lose { color: var(--muted); }
+.xo-status.win { color: var(--accent); font-size: 1.15rem; animation: xo-pop 0.6s ease-out; }
+
+/* The gaps between cells show the board's background, which draws the grid lines. */
+.xo-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--border);
+  transition: opacity 0.2s;
+}
+.xo-card.invited .xo-board { opacity: 0.45; }
+.xo-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--raised);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+/* Cells are disabled whenever it is not your move; keep them readable, not faded. */
+.xo-cell:disabled { opacity: 1; cursor: default; }
+.xo-cell:not(:disabled):hover { background: var(--panel); box-shadow: inset 0 0 0 2px var(--accent); }
+.xo-cell:not(:disabled):active { transform: scale(0.95); }
+.xo-cell[data-ghost]:hover::after {
+  content: attr(data-ghost);
+  position: absolute;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent);
+  opacity: 0.3;
+}
+.xo-cell[data-ghost="O"]:hover::after { color: var(--text); }
+.xo-cell.win { background: var(--accent); animation: xo-glow 0.9s ease-in-out 2; }
+.xo-card.decided .xo-cell:not(.win) .xo-mark { opacity: 0.35; }
+
+.xo-mark { width: 70%; height: 70%; fill: none; stroke: currentColor; stroke-width: 5; stroke-linecap: round; }
+.xo-mark.x { color: var(--accent); }
+.xo-mark.o { color: var(--text); }
+.xo-cell.win .xo-mark { color: var(--on-accent); }
+/* Each dash is as long as its stroke, so moving the offset from full to 0 draws it in. */
+.xo-mark line { stroke-dasharray: 26; animation: xo-draw-x 0.2s ease-out backwards; }
+.xo-mark line + line { animation-delay: 0.14s; }
+.xo-mark circle { stroke-dasharray: 70; animation: xo-draw-o 0.35s ease-out backwards; }
+
+.xo-note { margin: 0; font-size: 0.8rem; color: var(--muted); text-align: center; }
+.xo-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.xo-actions:empty { display: none; }
+.xo-secondary {
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  transition: border-color 0.15s;
+}
+.xo-secondary:hover { border-color: var(--accent); }
+
+.xo-invite {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  font-size: 1.2rem;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.xo-invite:hover:not(:disabled) { transform: rotate(-12deg) scale(1.08); border-color: var(--accent); }
+
+.xo-badge { display: inline-block; font-size: 0.95rem; animation: xo-wiggle 1.8s ease-in-out infinite; }
+
+@keyframes xo-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes xo-pulse { 50% { opacity: 0.55; } }
+@keyframes xo-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes xo-glow { 50% { filter: brightness(1.25); } }
+@keyframes xo-draw-x { from { stroke-dashoffset: 26; } }
+@keyframes xo-draw-o { from { stroke-dashoffset: 70; } }
+@keyframes xo-wiggle {
+  0%, 70%, 100% { transform: rotate(0); }
+  80% { transform: rotate(-14deg); }
+  90% { transform: rotate(14deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xo-card, .xo-card *, .xo-badge, .xo-invite { animation: none !important; transition: none !important; }
+}
