@@ -1,4 +1,4 @@
-import { dmRoomId, groupRoomId, type ChatMessage, type GroupInfo } from "@chat/shared";
+import { dmRoomId, groupRoomId, type ChatMessage, type GroupInfo, type XoGame } from "@chat/shared";
 
 // Sample data for `?preview`, so the chat screen can be viewed without a server.
 export const PREVIEW_ME = "you";
@@ -23,6 +23,27 @@ export const PREVIEW_MESSAGES: Record<string, ChatMessage[]> = {
     { id: "4", roomId: group, sender: "bob", text: "What time is the presentation rehearsal tomorrow?", sentAt: at(3) },
     { id: "5", roomId: group, sender: PREVIEW_ME, text: "2 PM", sentAt: at(2) },
   ],
+};
+
+const game = (id: string, roomId: string, rest: Partial<XoGame>): XoGame => ({
+  id,
+  roomId,
+  x: "alice",
+  o: PREVIEW_ME,
+  status: "playing",
+  board: Array(9).fill(null),
+  turn: "X",
+  result: null,
+  winner: null,
+  winLine: null,
+  declined: [],
+  ...rest,
+});
+
+/** One game of each look: an invite in the DM, a game in progress in the group. */
+export const PREVIEW_GAMES: Record<string, XoGame> = {
+  p1: game("p1", dm, { status: "invited" }),
+  p2: game("p2", group, { board: ["X", null, "O", null, "X", null, null, null, null], turn: "O" }),
 };
 
 /** Who is shown typing, by room, so the indicator can be seen without a server. */

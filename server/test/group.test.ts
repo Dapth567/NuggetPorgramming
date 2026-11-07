@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
 import { groupRoomId, type GroupInfo } from "@chat/shared";
-import { addMember, createGroup } from "../src/repo/groups.js";
+import { db } from "../src/db.js";
+import { addMember, createGroup, listGroups } from "../src/repo/groups.js";
 import {
   deleteTestData,
   login,
@@ -160,6 +161,19 @@ test("every logged-in client sees a new group with its members (R9)", async () =
   const group = await create(creator.client, groupName);
   assert.deepEqual(await seen, group);
   [creator, viewer].forEach(({ client }) => client.close());
+});
+
+test("a group whose creator is not added yet is not listed (R8, R9)", async () => {
+  const { client, name } = await registered();
+  const { data, error } = await db
+    .from("groups")
+    .insert({ name: "half made", created_by: name })
+    .select("id")
+    .single();
+  assert.ifError(error);
+  groupIds.push(String(data.id));
+  assert.ok(!(await listGroups()).some((g) => g.id === String(data.id)));
+  client.close();
 });
 
 test("a client that logs in later gets every group, even ones it is not in (R9)", async () => {

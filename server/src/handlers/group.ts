@@ -24,6 +24,8 @@ export function registerGroupHandlers(io: ChatServer, socket: ChatSocket) {
       const result = await deleteGroup(groupId, name);
       if (result === "not_found") return ack({ ok: false, error: "GROUP_NOT_FOUND" });
       if (result === "forbidden") return ack({ ok: false, error: "FORBIDDEN" });
+      // Its open XO games go too, or their players would stay "in a game" they can no longer see.
+      for (const [id, game] of state.games) if (game.roomId === groupRoomId(groupId)) state.games.delete(id);
       const ids = [...state.onlineUsers.values()];
       if (ids.length) io.to(ids).emit("group:deleted", { groupId });
       io.in(groupRoomId(groupId)).socketsLeave(groupRoomId(groupId));

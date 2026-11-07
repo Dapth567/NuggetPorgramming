@@ -1,15 +1,19 @@
-import type { GroupInfo } from "@chat/shared";
+import { groupRoomId, type GroupInfo } from "@chat/shared";
+import { XoBadge } from "./XoGame";
 
 /** Every group with its member names, including groups `me` has not joined (R9). */
 export function GroupList({
   groups,
   me,
   activeId,
+  invites,
   onOpen,
 }: {
   groups: GroupInfo[];
   me: string;
   activeId?: string;
+  /** Room ids with a game invite waiting for `me`. */
+  invites?: Set<string>;
   onOpen: (groupId: string) => void;
 }) {
   return (
@@ -30,6 +34,7 @@ export function GroupList({
                 {members}
               </span>
             </span>
+            {invites?.has(groupRoomId(g.id)) && <XoBadge />}
             <span className="count">{g.members.length}</span>
           </button>
         );

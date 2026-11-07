@@ -60,6 +60,21 @@ interface GroupInfo {
   createdBy: string;
   members: string[];
 }
+
+// เกม XO (special point) server เป็นคนเก็บและตัดสิน client แค่แสดงผล
+interface XoGame {
+  id: string;
+  roomId: string;               // ห้อง DM หรือกลุ่มที่เล่น
+  x: string;                    // คนชวน เล่นเป็น X และเดินก่อน
+  o: string | null;             // DM: คนที่ถูกชวน / กลุ่ม: null จนกว่าจะมีคนรับ
+  status: "invited" | "playing" | "over";
+  board: ("X" | "O" | null)[];  // 9 ช่อง เรียงทีละแถว
+  turn: "X" | "O";
+  result: "win" | "draw" | "forfeit" | "declined" | "cancelled" | null;
+  winner: string | null;
+  winLine: number[] | null;     // 3 ช่องที่เรียงกันตอนชนะ
+  declined: string[];           // สมาชิกกลุ่มที่กดปฏิเสธ
+}
 ```
 
 ในโค้ดใช้ `camelCase` ส่วน Supabase ใช้ `snake_case` คนทำ server ต้องแปลงให้ตรง เช่น `sent_at` เป็น `sentAt`
@@ -179,6 +194,27 @@ server บันทึกข้อความ แล้วส่ง `message:ne
 
 server ตรวจสมาชิก บันทึกข้อความ แล้วส่ง `message:new` ให้สมาชิกกลุ่มเท่านั้น รวมผู้ส่ง
 
+### เกม XO (special point)
+
+เล่นได้ทั้งในห้อง DM และห้องกลุ่ม ตรวจสิทธิ์ห้องแบบเดียวกับ `room:history` (คนนอกห้องได้ `NOT_A_MEMBER`)
+เกมเก็บใน memory ของ server ไม่ลงฐานข้อมูล ทุกครั้งที่เกมเปลี่ยน server ส่ง `game:update` ให้คนในห้องนั้นเท่านั้น
+คนหนึ่งอยู่ได้ทีละ 1 เกม: ถ้ากำลังเล่นหรือมีคำชวนที่ยังค้างอยู่ จะได้ `ALREADY_IN_GAME`
+
+| Event | Payload | สำเร็จ | Error เพิ่ม |
+| --- | --- | --- | --- |
+| `game:invite` | `{ roomId: string }` | `XoGame` (`invited`) | `USER_OFFLINE`, `ALREADY_IN_GAME` |
+| `game:respond` | `{ gameId: string, accept: boolean }` | `XoGame` | `GAME_NOT_FOUND`, `ALREADY_IN_GAME` |
+| `game:move` | `{ gameId: string, cell: number }` (0-8) | `XoGame` | `GAME_NOT_FOUND`, `NOT_YOUR_TURN` |
+| `game:leave` | `{ gameId: string }` | `XoGame` (`over`) | `GAME_NOT_FOUND` |
+| `game:list` | `{ roomId: string }` | `XoGame[]` เกมที่ยังไม่จบของห้องนั้น | - |
+
+- **DM**: ชวนอีกฝั่งในห้องได้เมื่อเขาออนไลน์ เขากดรับเกมจะเริ่ม กดปฏิเสธเกมจะจบ (`declined`)
+- **กลุ่ม**: สมาชิกคนไหนก็กดรับได้ คนแรกที่รับได้เล่น คนอื่นได้ `GAME_NOT_FOUND` และดูเกมต่อได้ คนที่ปฏิเสธถูกใส่ใน `declined` แต่คำชวนยังเปิดให้คนอื่น
+- รับคำชวนของคนอื่นแล้ว คำชวนที่ตัวเองส่งไว้จะถูกยกเลิก (`cancelled`) เพื่อไม่ให้อยู่ 2 เกมพร้อมกัน
+- `game:leave`: คนชวนยกเลิกคำชวน, คนถูกชวนใน DM ปฏิเสธ, ผู้เล่นยอมแพ้ (`forfeit` อีกฝั่งชนะ) ถ้าหลุดการเชื่อมต่อจะเหมือนเรียก `game:leave`
+- ลบกลุ่ม (`group:delete`) แล้วเกมที่ค้างในกลุ่มนั้นหายไปด้วย ไม่มี `game:update` ตามมา React ทิ้งเกมของกลุ่มนั้นเองเมื่อได้ `group:deleted`
+- จบแบบชนะ เสมอ หรือยอมแพ้ server บันทึกผลเป็นข้อความธรรมดา เช่น `🎮 XO: alice beat bob` แล้วส่ง `message:new` ในห้องนั้น
+
 ### การลบ
 
 | Event | Payload | สิทธิ์และผล |
@@ -224,6 +260,7 @@ React ส่ง `typing: true` ไม่เกิน 1 ครั้งทุก 
 | `users:list` | `string[]` | มีคน login หรือหลุดการเชื่อมต่อ | ทุกคนที่ login แล้ว | R4 |
 | `groups:list` | `GroupInfo[]` | login, สร้างกลุ่ม, เข้ากลุ่ม | ดูที่ event ต้นทาง | R9 |
 | `message:new` | `ChatMessage` | มีข้อความใหม่ | สมาชิกในห้องนั้นเท่านั้น | R6, R7, R11 |
+| `game:update` | `XoGame` | เกม XO ถูกชวน รับ เดิน หรือจบ | คนในห้องของเกมนั้นเท่านั้น | special point |
 | `message:deleted` | `{ messageId, roomId }` | ข้อความถูกลบ | ผู้เข้าร่วม DM ที่ออนไลน์ หรือ socket ในกลุ่ม | - |
 | `group:deleted` | `{ groupId }` | กลุ่มถูกลบ | ผู้ใช้ที่ login ทั้งหมด | - |
 | `avatars:list` | `UserAvatar[]` | login | คนที่เพิ่ง login | Special |
@@ -255,6 +292,10 @@ React ใช้รหัสเหล่านี้เลือกข้อค�
 | `ALREADY_A_MEMBER` | เป็นสมาชิกกลุ่มนี้อยู่แล้ว |
 | `SERVER_ERROR` | server หรือฐานข้อมูลมีปัญหา |
 | `NOT_IMPLEMENTED` | handler นี้ยังเขียนไม่เสร็จ |
+| `GAME_NOT_FOUND` | ไม่มีเกมนี้ จบไปแล้ว หรือมีคนรับคำชวนไปก่อน |
+| `NOT_YOUR_TURN` | ยังไม่ถึงตาเรา หรือเป็นคนดูไม่ใช่ผู้เล่น |
+| `ALREADY_IN_GAME` | กำลังเล่นหรือมีคำชวนค้างอยู่แล้ว |
+| `USER_OFFLINE` | คนที่ชวนใน DM ไม่ได้ออนไลน์ |
 
 ## ตัวอย่างลำดับการทำงาน
 
