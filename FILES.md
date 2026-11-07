@@ -72,13 +72,13 @@ React component
 | `TODO.md` | มีแล้ว | รายการงานและคนรับผิดชอบ | - |
 | `FILES.md` | มีแล้ว | เอกสารนี้ แผนผังไฟล์และหน้าที่ของแต่ละไฟล์ | - |
 | `docs/API.md` | มีแล้ว | event, payload, error code ต้องแก้คู่กับ `shared/src/index.ts` | R2-R11 |
-| `docs/ARCHITECTURE.md` | ยังไม่มี | system architecture diagram (client 2 เครื่องขึ้นไป + server + Supabase) พร้อม IP และพอร์ตที่ใช้ตอน demo และคำอธิบาย protocol ว่าใช้อะไร ทำไม ใช้อย่างไร ใช้ทำสไลด์ R1 | R1 |
+| `docs/ARCHITECTURE.md` | มีแล้ว | system architecture diagram (client 2 เครื่องขึ้นไป + server + Supabase) พร้อม IP และพอร์ตที่ใช้ตอน demo คำอธิบาย protocol ว่าใช้อะไร ทำไม ใช้อย่างไร และหลักฐาน R2 ใช้ทำสไลด์ R1, R2 | R1, R2 |
 | `docs/SETUP_SUPABASE.md` | มีแล้ว | วิธีตั้งค่า Supabase และ `.env` (login ไม่ใช้ Supabase Auth ไม่ใช้อีเมล) | R3 |
 | `docs/DATABASE.md` | ยังไม่มี | อธิบายตาราง `users`, `groups`, `group_members`, `messages` ว่าแต่ละคอลัมน์เก็บอะไร | R3, R7-R11 |
 | `docs/SPECIAL_POINTS.md` | ยังไม่มี | special point ที่เลือก 4 ข้อ คำอธิบาย ชื่อโมเดล AI และแหล่งอ้างอิง (สไลด์บังคับให้มี) | Part 3 |
 | `docs/DEMO.md` | ยังไม่มี | ขั้นตอน demo ทีละข้อ R1-R11 ว่าใครกดอะไรบนเครื่องไหน และ checklist ก่อนวัน demo | ทุกข้อ |
 | `docs/PROMPTS.md` | ยังไม่มี | บันทึก prompt ของ Generative AI ที่ใช้เขียนโค้ด แยกตาม requirement สไลด์ทุกข้อมีช่อง "Generative AI Prompt (if use)" | ทุกข้อ |
-| `docs/images/` | ยังไม่มี | รูป diagram และ screenshot สำหรับสไลด์ ตั้งชื่อตาม requirement เช่น `r1-architecture.png`, `r7-dm.png` | - |
+| `docs/images/` | มีแล้ว | รูป diagram และ screenshot สำหรับสไลด์ ตั้งชื่อตาม requirement เช่น `r1-architecture.png`, `r7-dm.png` | - |
 | `.env.example` | มีแล้ว | ตัวอย่างค่า env ถ้าเพิ่มตัวแปรใหม่ (เช่น key ของ AI) ต้องเพิ่มที่นี่ด้วย | - |
 
 ### ฐานข้อมูล
