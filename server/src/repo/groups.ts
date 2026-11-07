@@ -33,7 +33,13 @@ export async function createGroup(name: string, createdBy: string): Promise<Grou
   if (error) throw new Error(error.message);
 
   const id = String(data.id);
-  await addMember(id, createdBy);
+  try {
+    await addMember(id, createdBy);
+  } catch (error) {
+    // The REST API has no transactions, so undo the group rather than leave it with no members.
+    await db.from("groups").delete().eq("id", id);
+    throw error;
+  }
   return { id, name, createdBy, members: [createdBy] };
 }
 

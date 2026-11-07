@@ -49,6 +49,16 @@ test("a request is answered through its ack", async () => {
   client.close();
 });
 
+test("an event sent without a callback is dropped instead of crashing the server", async () => {
+  const client: Socket<ServerToClientEvents, ClientToServerEvents> = connect(url, {
+    transports: ["websocket"],
+  });
+  client.emit("dm:send", { to: "a", text: "b" }, undefined as never);
+  const response = await client.emitWithAck("dm:send", { to: "a", text: "b" });
+  assert.deepEqual(response, { ok: false, error: "NOT_LOGGED_IN" });
+  client.close();
+});
+
 test("a DM room id is the same from both sides", () => {
   assert.equal(dmRoomId("bob", "alice"), "dm:alice|bob");
   assert.equal(dmRoomId("alice", "bob"), "dm:alice|bob");

@@ -77,8 +77,7 @@ npm run check:db     # ทดสอบการเชื่อมต่อ Supab
 | R1 สถาปัตยกรรม client-server ข้ามเครื่อง | วางโครงแล้ว ยังไม่ได้ทดสอบข้ามเครื่องจริง |
 | R2 ใช้ socket เท่านั้น | วางโครงแล้ว (บังคับ `transports: ["websocket"]`) |
 | R3, R4 | เสร็จแล้ว |
-| R5, R6, R7, R10, R11 | server เสร็จแล้ว ยังไม่ได้ทดสอบบนหน้าเว็บจริง |
-| R8, R9 | ยังไม่ทำ (มี `TODO` ของ `group:create` ใน `server/src/handlers/group.ts`) |
+| R5, R6, R7, R8, R9, R10, R11 | server เสร็จแล้ว ยังไม่ได้ทดสอบบนหน้าเว็บจริง |
 | Special points 1-4 | ยังไม่ได้เลือก (ต้องมี AI อย่างน้อย 1 ข้อ) |
 
 #i love nugget

@@ -1,20 +1,41 @@
 import { groupRoomId } from "@chat/shared";
 import { sendGroupsList } from "../broadcast.js";
-import { addMember, findGroup, isMember } from "../repo/groups.js";
+import { addMember, createGroup, findGroup, isMember } from "../repo/groups.js";
 import { saveMessage } from "../repo/messages.js";
-import { NOT_IMPLEMENTED, type ChatServer, type ChatSocket } from "../types.js";
+import type { ChatServer, ChatSocket } from "../types.js";
 import {
   asRecord,
   INVALID_INPUT,
   isValidGroupId,
+  isValidGroupName,
   isValidText,
   NOT_LOGGED_IN,
   requireLogin,
 } from "../validate.js";
 
 export function registerGroupHandlers(io: ChatServer, socket: ChatSocket) {
-  // TODO(R8, R9): the creator is the only initial member; broadcast `groups:list`.
-  socket.on("group:create", (_payload, ack) => ack(NOT_IMPLEMENTED));
+  socket.on("group:create", async (payload, ack) => {
+    const me = requireLogin(socket);
+    if (!me) return ack(NOT_LOGGED_IN);
+
+    // Only `name` is read, so nobody else can be added when the group is created (R8).
+    const { name } = asRecord(payload);
+    const groupName = typeof name === "string" ? name.trim() : name;
+    if (!isValidGroupName(groupName)) return ack(INVALID_INPUT);
+
+    try {
+      const group = await createGroup(groupName, me);
+      // Login only joins rooms that already exist, so join the new one now (R11).
+      socket.join(groupRoomId(group.id));
+      ack({ ok: true, data: group });
+    } catch (error) {
+      console.error("[group:create]", error);
+      return ack({ ok: false, error: "SERVER_ERROR" });
+    }
+
+    // Everyone sees every group, even ones they are not in (R9). The group exists already, so a failure here is only logged.
+    sendGroupsList(io).catch((error) => console.error("[group:create] groups:list", error));
+  });
 
   socket.on("group:join", async (payload, ack) => {
     // The new member is always the logged-in user: no payload field can name someone else (R10).
