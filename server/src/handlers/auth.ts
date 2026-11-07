@@ -1,5 +1,5 @@
 import { groupRoomId } from "@chat/shared";
-import { sendGroupsList, sendUsersList } from "../broadcast.js";
+import { sendAvatarsList, sendGroupsList, sendUsersList } from "../broadcast.js";
 import { hashPassword, verifyPassword } from "../password.js";
 import { createUser, findUser } from "../repo/users.js";
 import { groupsOf } from "../repo/groups.js";
@@ -45,6 +45,8 @@ export function registerAuthHandlers(io: ChatServer, socket: ChatSocket) {
 
       ack({ ok: true, data: { name } });
       sendUsersList(io);
+      // Photos are optional, so a failure here must not stop the login.
+      sendAvatarsList(socket).catch((error) => console.error("[auth:login] avatars:list", error));
       await sendGroupsList(socket);
     } catch (error) {
       console.error("[auth:login]", error);

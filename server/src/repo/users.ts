@@ -1,3 +1,4 @@
+import type { UserAvatar } from "@chat/shared";
 import { db } from "../db.js";
 
 export interface UserRecord {
@@ -27,4 +28,17 @@ export async function findUser(name: string): Promise<UserRecord | null> {
 
 export async function userExists(name: string): Promise<boolean> {
   return (await findUser(name)) !== null;
+}
+
+/** `image: null` removes the photo. */
+export async function setAvatar(name: string, image: string | null): Promise<void> {
+  const { error } = await db.from("users").update({ avatar: image }).eq("name", name);
+  if (error) throw new Error(error.message);
+}
+
+/** Every user with a photo, online or not, because old messages show their senders too. */
+export async function listAvatars(): Promise<UserAvatar[]> {
+  const { data, error } = await db.from("users").select("name, avatar").not("avatar", "is", null);
+  if (error) throw new Error(error.message);
+  return data.map((row) => ({ name: row.name, image: row.avatar }));
 }

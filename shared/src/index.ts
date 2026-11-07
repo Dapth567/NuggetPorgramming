@@ -7,6 +7,10 @@ export const LIMITS = {
   groupNameMaxLength: 50,
   textMaxLength: 2000,
   historyMaxMessages: 100,
+  /** Width and height of a profile photo in pixels; React resizes before sending. */
+  avatarSize: 96,
+  /** Length of the data URL. Must match the check in supabase/avatars.sql. */
+  avatarMaxLength: 20_000,
 } as const;
 
 /** Letters, marks, digits and `_`. Thai is allowed; `|` is not, because it separates DM names. */
@@ -56,6 +60,12 @@ export interface GroupInfo {
   members: string[];
 }
 
+export interface UserAvatar {
+  name: string;
+  /** A `data:image/...;base64,` URL */
+  image: string;
+}
+
 export interface ClientToServerEvents {
   "auth:register": (payload: { name: string; password: string }, ack: Reply<void>) => void;
   "auth:login": (payload: { name: string; password: string }, ack: Reply<{ name: string }>) => void;
@@ -66,6 +76,8 @@ export interface ClientToServerEvents {
   "group:send": (payload: { groupId: string; text: string }, ack: Reply<ChatMessage>) => void;
   "group:delete": (payload: { groupId: string }, ack: Reply<void>) => void;
   "message:delete": (payload: { messageId: string }, ack: Reply<void>) => void;
+  /** `null` removes the photo. */
+  "profile:avatar": (payload: { image: string | null }, ack: Reply<void>) => void;
 }
 
 export interface ServerToClientEvents {
@@ -74,4 +86,6 @@ export interface ServerToClientEvents {
   "message:new": (message: ChatMessage) => void;
   "message:deleted": (payload: { messageId: string; roomId: string }) => void;
   "group:deleted": (payload: { groupId: string }) => void;
+  "avatars:list": (avatars: UserAvatar[]) => void;
+  "avatar:updated": (avatar: { name: string; image: string | null }) => void;
 }

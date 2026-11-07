@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
+import { toAvatar } from "./avatar";
 import { GroupList } from "./components/GroupList";
 import nugget from "./assets/nugget.png";
 import { ERROR_TEXT } from "./errors";
@@ -111,8 +112,18 @@ function LoginScreen({ chat }: { chat: ChatApi }) {
   );
 }
 
-function Avatar({ label, group }: { label: string; group?: boolean }) {
-  return <div className={group ? "avatar group" : "avatar"}>{label.slice(0, 1).toUpperCase()}</div>;
+function Avatar({ label, group, image, small }: {
+  label: string;
+  group?: boolean;
+  image?: string;
+  small?: boolean;
+}) {
+  const className = ["avatar", group && "group", small && "small"].filter(Boolean).join(" ");
+  return (
+    <span className={className}>
+      {image ? <img src={image} alt="" /> : label.slice(0, 1).toUpperCase()}
+    </span>
+  );
 }
 
 function formatTime(iso: string) {
@@ -120,7 +131,7 @@ function formatTime(iso: string) {
 }
 
 function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
-  const { users, groups, messagesByRoom, openRoom } = chat;
+  const { users, groups, messagesByRoom, avatars, openRoom } = chat;
   const [room, setRoom] = useState<Room | null>(null);
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
@@ -132,10 +143,13 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const isMember = room?.kind === "dm" || group?.members.includes(me) === true;
   const current = roomId ? (messagesByRoom[roomId] ?? []) : [];
 
-  const report = (error: ErrorCode | null) => {
-    if (!error) return;
-    setNotice(ERROR_TEXT[error]);
+  const showNotice = (message: string) => {
+    setNotice(message);
     setTimeout(() => setNotice(""), 3000);
+  };
+
+  const report = (error: ErrorCode | null) => {
+    if (error) showNotice(ERROR_TEXT[error]);
   };
 
   useEffect(() => {
@@ -153,6 +167,19 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
     if (!room || !body) return;
     setText("");
     report(room.kind === "dm" ? await chat.sendDm(room.name, body) : await chat.sendGroup(room.id, body));
+  };
+
+  const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // Or choosing the same file again would not fire this event.
+    if (!file) return;
+    let image: string;
+    try {
+      image = await toAvatar(file);
+    } catch {
+      return showNotice("Could not use that image. Try a different one.");
+    }
+    report(await chat.changeAvatar(image));
   };
 
   const createGroup = async () => {
@@ -191,7 +218,29 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
       <aside className="sidebar">
         <div className="sidebar-brand"><Brand compact /></div>
         <header className="sidebar-head">
-          <Avatar label={me} />
+          <div className="avatar-control">
+            <label className="avatar-edit" title="Change profile photo">
+              <Avatar label={me} image={avatars.get(me)} />
+              <input
+                className="avatar-input"
+                type="file"
+                accept="image/*"
+                aria-label="Change profile photo"
+                onChange={pickAvatar}
+              />
+            </label>
+            {avatars.has(me) && (
+              <button
+                className="avatar-remove"
+                type="button"
+                title="Remove profile photo"
+                aria-label="Remove profile photo"
+                onClick={async () => report(await chat.changeAvatar(null))}
+              >
+                ×
+              </button>
+            )}
+          </div>
           <div className="profile-name"><strong>{me}</strong></div>
           <button className="small logout" onClick={chat.logout}>
             Log out
@@ -204,7 +253,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
           {users.map((name) =>
             name === me ? (
               <div key={name} className="item self">
-                <Avatar label={name} />
+                <Avatar label={name} image={avatars.get(name)} />
                 <span className="item-name">{name} (you)</span>
                 <span className="dot" />
               </div>
@@ -214,7 +263,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
                 className={room?.kind === "dm" && room.name === name ? "item active" : "item"}
                 onClick={() => setRoom({ kind: "dm", name })}
               >
-                <Avatar label={name} />
+                <Avatar label={name} image={avatars.get(name)} />
                 <span className="item-name">{name}</span>
                 <span className="dot" />
               </button>
@@ -245,7 +294,11 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
         ) : (
           <>
             <header className="chat-head">
-              <Avatar label={title ?? "?"} group={room.kind === "group"} />
+              <Avatar
+                label={title ?? "?"}
+                group={room.kind === "group"}
+                image={room.kind === "dm" ? avatars.get(room.name) : undefined}
+              />
               <div>
                 <strong>{title ?? "Group not found"}</strong>
                 <div className="sub">{subtitle}</div>
@@ -257,21 +310,34 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               )}
             </header>
             <div className="messages">
-              {current.map((m) => (
-                <div key={m.id} className={m.sender === me ? "msg mine" : "msg"}>
-                  {m.sender !== me && room.kind === "group" && <div className="sender">{m.sender}</div>}
-                  <div className="bubble">{m.text}</div>
-                  <div className="message-meta">
-                    <span className="time">{formatTime(m.sentAt)}</span>
-                    {m.sender === me && (
-                      <button className="delete-message" type="button" disabled={deleting}
-                        aria-label="Delete message" onClick={() => deleteMessage(m.id, m.roomId)}>
-                        Delete
-                      </button>
+              {current.map((m, index) => {
+                const mine = m.sender === me;
+                // A run of messages from one person shows their photo and name only once.
+                const first = index === 0 || current[index - 1].sender !== m.sender;
+                const className = ["msg", mine && "mine", !first && "followup"].filter(Boolean).join(" ");
+                return (
+                  <div key={m.id} className={className}>
+                    {!mine && (
+                      <div className="msg-avatar">
+                        {first && <Avatar label={m.sender} image={avatars.get(m.sender)} small />}
+                      </div>
                     )}
+                    <div className="msg-body">
+                      {!mine && first && room.kind === "group" && <div className="sender">{m.sender}</div>}
+                      <div className="bubble">{m.text}</div>
+                      <div className="message-meta">
+                        <span className="time">{formatTime(m.sentAt)}</span>
+                        {mine && (
+                          <button className="delete-message" type="button" disabled={deleting}
+                            aria-label="Delete message" onClick={() => deleteMessage(m.id, m.roomId)}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div ref={bottomRef} />
             </div>
             {isMember ? (

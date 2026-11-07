@@ -87,6 +87,7 @@ React component
 | --- | --- | --- | --- |
 | `supabase/schema.sql` | มีแล้ว | SQL สร้างตารางทั้ง 4 ตาราง ให้ตรงกับใน Supabase จริง ใช้สร้างใหม่ได้ถ้าโปรเจกต์ Supabase หาย | R3, R7-R11 |
 | `supabase/delete_group.sql` | มีแล้ว | migration สำหรับลบกลุ่มและข้อความแบบ atomic รวมทั้งป้องกันการเพิ่มข้อความระหว่างลบกลุ่ม | - |
+| `supabase/avatars.sql` | มีแล้ว | migration เพิ่มคอลัมน์ `users.avatar` สำหรับรูปโปรไฟล์ | Special |
 
 คอลัมน์ที่คาดว่าต้องมี (คนตั้งตารางต้องตรวจกับ Supabase จริงแล้วแก้ให้ตรง)
 
@@ -117,8 +118,9 @@ React component
 | `server/src/check-db.ts` | มีแล้ว | สคริปต์ `npm run check:db` ตรวจว่าต่อทุกตารางได้ | - |
 | `server/src/validate.ts` | มีแล้ว | ฟังก์ชันตรวจข้อมูลตามกฎใน `LIMITS` และ `NAME_PATTERN` (ชื่อ, รหัสผ่าน, ชื่อกลุ่ม, ข้อความ) และ `requireLogin(socket)` ที่คืนชื่อผู้ใช้หรือบอกว่าต้องตอบ `NOT_LOGGED_IN` ทุก handler ใช้ไฟล์นี้ ห้ามเขียนตรวจเองในแต่ละ handler | R3, R6-R11 |
 | `server/src/password.ts` | มีแล้ว | `hashPassword()` และ `verifyPassword()` ด้วย `node:crypto` (scrypt) ไม่ต้องลง library เพิ่ม ห้ามเก็บรหัสผ่านตรง ๆ | R3 |
-| `server/src/broadcast.ts` | มีแล้ว | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว และ `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก ใช้ร่วมกันระหว่าง `auth.ts` กับ `group.ts` | R4, R9 |
-| `server/src/repo/users.ts` | มีแล้ว | `createUser()`, `findUser()`, `userExists()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
+| `server/src/broadcast.ts` | มีแล้ว | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว, `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก, `sendAvatarsList(socket)` และ `sendAvatarUpdate(io, name, image)` ส่งรูปโปรไฟล์ ใช้ร่วมกันหลาย handler | R4, R9 |
+| `server/src/handlers/profile.ts` | มีแล้ว | `profile:avatar` ตั้งหรือลบรูปโปรไฟล์ของคนที่ login อยู่ | Special |
+| `server/src/repo/users.ts` | มีแล้ว | `createUser()`, `findUser()`, `userExists()`, `setAvatar()`, `listAvatars()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
 | `server/src/repo/groups.ts` | มีแล้ว | `createGroup()` (ใส่ผู้สร้างเป็นสมาชิกคนเดียว), `listGroups()` (รวมรายชื่อสมาชิก), `findGroup()`, `addMember()`, `isMember()`, `groupsOf(name)` บนตาราง `groups` และ `group_members` | R8-R11 |
 | `server/src/repo/messages.ts` | มีแล้ว | `saveMessage()` และ `roomHistory(roomId, limit)` บนตาราง `messages` คืนเป็น `ChatMessage` | R5, R7, R11 |
 
@@ -156,6 +158,7 @@ React component
 | `server/test/membership.test.ts` | มีแล้ว | เข้ากลุ่มได้เฉพาะตัวเอง (แนบชื่อคนอื่นมาก็ไม่ถูกเพิ่ม), เข้าซ้ำได้ `ALREADY_A_MEMBER`, ทุกเครื่องเห็นสมาชิกใหม่, เข้าแล้วได้รับข้อความและประวัติของกลุ่ม | R9, R10, R11 |
 | `server/test/group.test.ts` | มีแล้ว (`group:join` ทดสอบใน `membership.test.ts`) | สร้างกลุ่มแล้วมีสมาชิกคนเดียว, ทุกคนเห็นกลุ่ม, เข้ากลุ่มเอง, คนนอกกลุ่มส่งและรับข้อความไม่ได้ | R8-R11 |
 | `server/test/delete.test.ts` | มีแล้ว | สิทธิ์ลบข้อความและกลุ่ม การแจ้งเตือน และการลบประวัติ | - |
+| `server/test/profile.test.ts` | มีแล้ว | ตรวจชนิดและขนาดรูปโปรไฟล์, แจ้งทุกคนเมื่อเปลี่ยนรูป, โหลดรูปตอน login | Special |
 | `server/test/room.test.ts` | มีแล้ว | คนนอกห้องโหลดประวัติไม่ได้, ประวัติเรียงเก่าไปใหม่ | R5, R7, R11 |
 
 ### `client/` ฝั่ง React
@@ -170,6 +173,7 @@ React component
 | `client/src/socket.ts` | มีแล้ว | การเชื่อมต่อ Socket.IO อันเดียวของทั้งเว็บ (websocket เท่านั้น) ห้ามสร้างการเชื่อมต่อใหม่ที่อื่น | R1, R2 |
 | `client/src/App.tsx` | มีแล้ว (TODO) | เรียก `useChat()` แล้วเลือกหน้า: ยังไม่ login แสดง `LoginPage` login แล้วแสดง `ChatPage` ตอนนี้แสดงแค่สถานะการเชื่อมต่อ | - |
 | `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack แต่กลุ่มจาก ack ของ `group:create` และ `group:join` ใส่ใน `groups` ทันที ไม่ต้องรอ `groups:list` | R3-R11 |
+| `client/src/avatar.ts` | มีแล้ว | `toAvatar(file)` ครอบรูปเป็นสี่เหลี่ยมจัตุรัสและย่อเป็น JPEG ก่อนส่งผ่าน socket | Special |
 | `client/src/errors.ts` | ยังไม่มี | แปลง `ErrorCode` เป็นข้อความภาษาไทยที่แสดงให้ผู้ใช้ | - |
 | `client/src/styles.css` | ยังไม่มี | style ทั้งเว็บ ไฟล์เดียว ถ้ายาวมากค่อยแยกตาม component | R6 |
 | `client/src/pages/LoginPage.tsx` | ยังไม่มี | ฟอร์มชื่อและรหัสผ่าน ปุ่มสมัครและปุ่ม login แสดง error เช่นชื่อซ้ำ | R3 |
