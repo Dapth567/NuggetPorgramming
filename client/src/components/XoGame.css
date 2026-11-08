@@ -101,6 +101,33 @@
 .xo-mark circle { stroke-dasharray: 70; animation: xo-draw-o 0.35s ease-out backwards; }
 
 .xo-note { margin: 0; font-size: 0.8rem; color: var(--muted); text-align: center; }
+
+/* Online group members to invite, several at once. */
+.xo-picker {
+  margin: 0;
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--raised);
+}
+.xo-picker legend { padding: 0 6px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.xo-pick-list { display: flex; flex-direction: column; gap: 2px; max-height: 168px; overflow-y: auto; }
+.xo-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.xo-pick:hover { background: var(--panel); }
+/* Undo the text-box padding styles.css gives every input. */
+.xo-pick input { width: 18px; height: 18px; margin: 0; padding: 0; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+.xo-picker .primary { align-self: center; }
 .xo-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
 .xo-actions:empty { display: none; }
 .xo-secondary {

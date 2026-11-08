@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { AI_DISPLAY_NAME, AI_NAME, dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
 import { toAvatar } from "./avatar";
 import { GroupList } from "./components/GroupList";
-import { invitesFor, XoBadge, XoGameCard, XoInviteButton } from "./components/XoGame";
+import { invitesFor, showsGame, XoBadge, XoGameCard, XoInviteButton } from "./components/XoGame";
 import nugget from "./assets/nugget.png";
 import aiPhoto from "./assets/ai-mash.jpg";
 import { ERROR_TEXT } from "./errors";
@@ -157,10 +157,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const group = room?.kind === "group" ? groups.find((g) => g.id === room.id) : undefined;
   const isMember = room?.kind === "dm" || group?.members.includes(me) === true;
   const current = roomId ? (messagesByRoom[roomId] ?? []) : [];
-  // An invite you declined in a group stays open for the others, so only you stop seeing it.
-  const roomGames = Object.values(chat.games).filter(
-    (g) => g.roomId === roomId && !(g.status === "invited" && g.declined.includes(me)),
-  );
+  const roomGames = Object.values(chat.games).filter((g) => g.roomId === roomId && showsGame(g, me));
   const invites = invitesFor(chat.games, me);
   const typing = roomId
     ? typingLine((typingByRoom[roomId] ?? []).filter((name) => name !== me).map(shownName))

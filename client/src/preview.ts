@@ -36,7 +36,10 @@ const game = (id: string, roomId: string, rest: Partial<XoGame>): XoGame => ({
   result: null,
   winner: null,
   winLine: null,
+  invitees: [],
   declined: [],
+  rematch: [],
+  left: [],
   ...rest,
 });
 

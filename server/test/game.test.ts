@@ -49,6 +49,12 @@ async function invite(client: TestClient, roomId: string) {
   return res.data;
 }
 
+async function ask(client: TestClient, gameId: string, names: string[]) {
+  const res = await client.emitWithAck("game:ask", { gameId, names });
+  assert.ok(res.ok, `game:ask failed: ${res.ok ? "" : res.error}`);
+  return res.data;
+}
+
 /** A DM game between two new users that has already started. */
 async function dmGame() {
   const [alice, bob] = [await user(), await user()];
@@ -149,7 +155,7 @@ test("a DM game is played to a win and the result is saved in that chat", async 
   assert.ok(history.ok);
   assert.deepEqual(history.data.at(-1), message);
 
-  // The game is gone once it is over.
+  // No more moves once the round is over.
   assert.deepEqual(await alice.client.emitWithAck("game:move", { gameId: game.id, cell: 8 }), {
     ok: false,
     error: "GAME_NOT_FOUND",
@@ -175,7 +181,7 @@ test("a full board with no line is a draw", async () => {
   bob.client.close();
 });
 
-test("anyone in a group can accept, only the first one plays, and outsiders see nothing (R11)", async () => {
+test("the members asked in a group race to accept, the first one plays, and outsiders see nothing (R11)", async () => {
   const { alice, bob, carol, dave, roomId } = await groupWithOutsider();
   const daveSees = recordGames(dave.client);
 
@@ -184,10 +190,13 @@ test("anyone in a group can accept, only the first one plays, and outsiders see 
     error: "NOT_A_MEMBER",
   });
 
-  const carolGetsInvite = nextGame(carol.client);
   const game = await invite(alice.client, roomId);
   assert.equal(game.o, null);
-  assert.deepEqual(await carolGetsInvite, game);
+  assert.deepEqual(game.invitees, []);
+  const carolGetsInvite = nextGame(carol.client, (g) => g.invitees.includes(carol.name));
+  const asked = await ask(alice.client, game.id, [bob.name, carol.name]);
+  assert.deepEqual(asked.invitees, [bob.name, carol.name]);
+  assert.deepEqual(await carolGetsInvite, asked);
 
   assert.deepEqual(await dave.client.emitWithAck("game:respond", { gameId: game.id, accept: true }), {
     ok: false,
@@ -226,6 +235,7 @@ test("anyone in a group can accept, only the first one plays, and outsiders see 
 test("a group member can say no without closing the invite for the others", async () => {
   const { alice, bob, carol, dave, roomId } = await groupWithOutsider();
   const game = await invite(alice.client, roomId);
+  await ask(alice.client, game.id, [bob.name, carol.name]);
 
   const no = await carol.client.emitWithAck("game:respond", { gameId: game.id, accept: false });
   assert.ok(no.ok);
@@ -239,13 +249,56 @@ test("a group member can say no without closing the invite for the others", asyn
   [alice, bob, carol, dave].forEach(({ client }) => client.close());
 });
 
+test("in a group only members the inviter asked can answer, and only online members can be asked", async () => {
+  const { alice, bob, carol, dave, roomId } = await groupWithOutsider();
+  const offline = await registerNewUser(server.url);
+  names.push(offline.name);
+  await addMember(roomId.slice("group:".length), offline.name);
+  try {
+    const game = await invite(alice.client, roomId);
+    await ask(alice.client, game.id, [bob.name]);
+
+    for (const accept of [true, false]) {
+      assert.deepEqual(await carol.client.emitWithAck("game:respond", { gameId: game.id, accept }), {
+        ok: false,
+        error: "INVALID_INPUT",
+      });
+    }
+    const wrong: [TestClient, unknown, string][] = [
+      [alice.client, [dave.name], "INVALID_INPUT"], // outside the group (R11)
+      [alice.client, [alice.name], "INVALID_INPUT"],
+      [alice.client, [], "INVALID_INPUT"],
+      [alice.client, "bob", "INVALID_INPUT"],
+      [alice.client, [offline.name], "USER_OFFLINE"],
+      [bob.client, [carol.name], "GAME_NOT_FOUND"], // only the inviter asks
+    ];
+    for (const [client, asked, error] of wrong) {
+      const res = await client.emitWithAck("game:ask", { gameId: game.id, names: asked as string[] });
+      assert.deepEqual(res, { ok: false, error }, JSON.stringify(asked));
+    }
+
+    // Carol says no, is asked again, and this time takes the seat.
+    await ask(alice.client, game.id, [carol.name]);
+    const no = await carol.client.emitWithAck("game:respond", { gameId: game.id, accept: false });
+    assert.ok(no.ok);
+    assert.deepEqual(no.data.declined, [carol.name]);
+    assert.deepEqual((await ask(alice.client, game.id, [carol.name])).declined, []);
+    const yes = await carol.client.emitWithAck("game:respond", { gameId: game.id, accept: true });
+    assert.ok(yes.ok);
+    assert.equal(yes.data.o, carol.name);
+  } finally {
+    [alice, bob, carol, dave, offline].forEach(({ client }) => client.close());
+  }
+});
+
 test("deleting a group ends its games, so the players can start new ones", async () => {
   const { alice, bob, carol, dave, roomId } = await groupWithOutsider();
   try {
     const game = await invite(alice.client, roomId);
+    await ask(alice.client, game.id, [bob.name]);
     assert.ok((await bob.client.emitWithAck("game:respond", { gameId: game.id, accept: true })).ok);
 
-    const deleted = await alice.client.emitWithAck("group:delete", { groupId: roomId.slice("group:".length) });
+    const deleted =await alice.client.emitWithAck("group:delete", { groupId: roomId.slice("group:".length) });
     assert.deepEqual(deleted, { ok: true }, "is supabase/delete_group.sql installed?");
     assert.deepEqual(await alice.client.emitWithAck("game:move", { gameId: game.id, cell: 0 }), {
       ok: false,
@@ -280,7 +333,7 @@ test("you cannot invite yourself or someone offline, or be in two games at once"
 
   // Accepting someone else's invite withdraws your own, so nobody plays two games.
   const fromCarol = await invite(carol.client, dmRoomId(carol.name, alice.name));
-  const bobSeesCancel = nextGame(bob.client, (g) => g.id === toBob.id && g.status === "over");
+  const bobSeesCancel = nextGame(bob.client, (g) => g.id === toBob.id && g.status === "closed");
   const accepted = await alice.client.emitWithAck("game:respond", { gameId: fromCarol.id, accept: true });
   assert.ok(accepted.ok);
   assert.equal((await bobSeesCancel).result, "cancelled");
@@ -299,6 +352,7 @@ test("the inviter can cancel, and a player who resigns or disconnects loses", as
   const cancelled = await alice.client.emitWithAck("game:leave", { gameId: invited.id });
   assert.ok(cancelled.ok);
   assert.equal(cancelled.data.result, "cancelled");
+  assert.equal(cancelled.data.status, "closed");
 
   const second = await invite(alice.client, dmRoomId(alice.name, bob.name));
   assert.ok((await bob.client.emitWithAck("game:respond", { gameId: second.id, accept: true })).ok);
@@ -306,8 +360,12 @@ test("the inviter can cancel, and a player who resigns or disconnects loses", as
   assert.ok(resigned.ok);
   assert.equal(resigned.data.result, "forfeit");
   assert.equal(resigned.data.winner, alice.name);
+  assert.deepEqual(resigned.data.left, [bob.name]);
 
+  // Alice is alone at that table; inviting again closes it, so only one card is ever on screen.
+  const oldTableCloses = nextGame(bob.client, (g) => g.id === second.id && g.status === "closed");
   const third = await invite(alice.client, dmRoomId(alice.name, bob.name));
+  await oldTableCloses;
   assert.ok((await bob.client.emitWithAck("game:respond", { gameId: third.id, accept: true })).ok);
   const aliceSeesEnd = nextGame(alice.client, (g) => g.id === third.id && g.status === "over");
   bob.client.close();
@@ -315,6 +373,64 @@ test("the inviter can cancel, and a player who resigns or disconnects loses", as
   assert.equal(end.result, "forfeit");
   assert.equal(end.winner, alice.name);
   alice.client.close();
+});
+
+test("another round starts on the same table only when both ask, and each result is posted", async () => {
+  const { alice, bob, game } = await dmGame();
+  const roomId = dmRoomId(alice.name, bob.name);
+  try {
+    for (const [client, cell] of [[alice.client, 0], [bob.client, 3], [alice.client, 1], [bob.client, 4]] as const) {
+      await move(client, game.id, cell);
+    }
+    // Wait for round one's result, so it cannot be mistaken for round two's below.
+    const firstResult = nextMessage(alice.client);
+    assert.equal((await move(alice.client, game.id, 2)).status, "over");
+    assert.match((await firstResult).text, new RegExp(`${alice.name} beat ${bob.name}`));
+
+    const first = await alice.client.emitWithAck("game:rematch", { gameId: game.id });
+    assert.ok(first.ok);
+    assert.equal(first.data.status, "over", "one ask is not enough");
+    assert.deepEqual(first.data.rematch, [alice.name]);
+
+    const second = await bob.client.emitWithAck("game:rematch", { gameId: game.id });
+    assert.ok(second.ok);
+    assert.equal(second.data.id, game.id);
+    assert.equal(second.data.status, "playing");
+    assert.deepEqual(second.data.board, Array(9).fill(null));
+    assert.deepEqual(second.data.rematch, []);
+
+    // Round two: bob wins on the middle column.
+    for (const [client, cell] of [[alice.client, 0], [bob.client, 1], [alice.client, 2], [bob.client, 4], [alice.client, 3]] as const) {
+      await move(client, game.id, cell);
+    }
+    const result = nextMessage(alice.client);
+    assert.equal((await move(bob.client, game.id, 7)).winner, bob.name);
+    assert.match((await result).text, new RegExp(`${bob.name} beat ${alice.name}`));
+
+    const history = await alice.client.emitWithAck("room:history", { roomId });
+    assert.ok(history.ok);
+    assert.equal(history.data.filter((m) => m.text.startsWith("🎮 XO:")).length, 2, "one result per round");
+
+    // Bob leaves: alice is alone and can no longer ask for a rematch, only invite or leave.
+    const left = await bob.client.emitWithAck("game:leave", { gameId: game.id });
+    assert.ok(left.ok);
+    assert.deepEqual(left.data.left, [bob.name]);
+    assert.equal(left.data.status, "over");
+    assert.deepEqual(await alice.client.emitWithAck("game:rematch", { gameId: game.id }), {
+      ok: false,
+      error: "GAME_NOT_FOUND",
+    });
+
+    const bobSeesClose = nextGame(bob.client, (g) => g.id === game.id && g.status === "closed");
+    const closed = await alice.client.emitWithAck("game:leave", { gameId: game.id });
+    assert.ok(closed.ok);
+    assert.equal(closed.data.status, "closed");
+    await bobSeesClose;
+    assert.deepEqual(await alice.client.emitWithAck("game:list", { roomId }), { ok: true, data: [] });
+  } finally {
+    alice.client.close();
+    bob.client.close();
+  }
 });
 
 test("game:list gives a room's open games to its members only", async () => {
@@ -339,6 +455,8 @@ test("every game event needs a login", async () => {
     client.emitWithAck("game:respond", { gameId: id, accept: true }),
     client.emitWithAck("game:move", { gameId: id, cell: 0 }),
     client.emitWithAck("game:leave", { gameId: id }),
+    client.emitWithAck("game:rematch", { gameId: id }),
+    client.emitWithAck("game:ask", { gameId: id, names: ["a"] }),
     client.emitWithAck("game:list", { roomId: "dm:a|b" }),
   ]);
   for (const res of answers) assert.deepEqual(res, { ok: false, error: "NOT_LOGGED_IN" });

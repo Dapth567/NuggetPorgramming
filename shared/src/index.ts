@@ -88,7 +88,11 @@ export interface XoGame {
   x: string;
   /** Plays O. In a DM it is the invited user; in a group it stays null until someone accepts. */
   o: string | null;
-  status: "invited" | "playing" | "over";
+  /**
+   * `over`: a round ended and the table stays open so the players can play again or leave.
+   * `closed`: everyone left; clients remove the game.
+   */
+  status: "invited" | "playing" | "over" | "closed";
   /** 9 cells, row by row. */
   board: (XoMark | null)[];
   turn: XoMark;
@@ -97,8 +101,14 @@ export interface XoGame {
   winner: string | null;
   /** The 3 cells of the winning line. */
   winLine: number[] | null;
+  /** Group members the inviter asked to play; the first of them to accept takes the seat. */
+  invitees: string[];
   /** Group members who said no; the invite stays open for the others. */
   declined: string[];
+  /** Players who asked for another round; it starts once both have. */
+  rematch: string[];
+  /** Players who left the table. Their names stay so the last result can still be shown. */
+  left: string[];
 }
 
 export interface UserAvatar {
@@ -119,6 +129,9 @@ export interface ClientToServerEvents {
   "game:respond": (payload: { gameId: string; accept: boolean }, ack: Reply<XoGame>) => void;
   "game:move": (payload: { gameId: string; cell: number }, ack: Reply<XoGame>) => void;
   "game:leave": (payload: { gameId: string }, ack: Reply<XoGame>) => void;
+  "game:rematch": (payload: { gameId: string }, ack: Reply<XoGame>) => void;
+  /** Group only: the inviter asks online members to play; several at once. */
+  "game:ask": (payload: { gameId: string; names: string[] }, ack: Reply<XoGame>) => void;
   "game:list": (payload: { roomId: string }, ack: Reply<XoGame[]>) => void;
   "group:delete": (payload: { groupId: string }, ack: Reply<void>) => void;
   "message:delete": (payload: { messageId: string }, ack: Reply<void>) => void;

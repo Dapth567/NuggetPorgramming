@@ -67,13 +67,16 @@ interface XoGame {
   roomId: string;               // ห้อง DM หรือกลุ่มที่เล่น
   x: string;                    // คนชวน เล่นเป็น X และเดินก่อน
   o: string | null;             // DM: คนที่ถูกชวน / กลุ่ม: null จนกว่าจะมีคนรับ
-  status: "invited" | "playing" | "over";
+  status: "invited" | "playing" | "over" | "closed";  // over = จบรอบ โต๊ะยังเปิด / closed = ทุกคนออกแล้ว ให้ลบการ์ด
   board: ("X" | "O" | null)[];  // 9 ช่อง เรียงทีละแถว
   turn: "X" | "O";
   result: "win" | "draw" | "forfeit" | "declined" | "cancelled" | null;
   winner: string | null;
   winLine: number[] | null;     // 3 ช่องที่เรียงกันตอนชนะ
+  invitees: string[];           // สมาชิกกลุ่มที่คนชวนเลือกเชิญ (DM ไม่ใช้)
   declined: string[];           // สมาชิกกลุ่มที่กดปฏิเสธ
+  rematch: string[];            // ผู้เล่นที่กดเล่นอีกรอบแล้ว ครบ 2 คนรอบใหม่เริ่ม
+  left: string[];               // ผู้เล่นที่ออกจากโต๊ะแล้ว (React ซ่อนการ์ดของคนนั้น)
 }
 ```
 
@@ -205,15 +208,23 @@ server ตรวจสมาชิก บันทึกข้อความ �
 | `game:invite` | `{ roomId: string }` | `XoGame` (`invited`) | `USER_OFFLINE`, `ALREADY_IN_GAME` |
 | `game:respond` | `{ gameId: string, accept: boolean }` | `XoGame` | `GAME_NOT_FOUND`, `ALREADY_IN_GAME` |
 | `game:move` | `{ gameId: string, cell: number }` (0-8) | `XoGame` | `GAME_NOT_FOUND`, `NOT_YOUR_TURN` |
-| `game:leave` | `{ gameId: string }` | `XoGame` (`over`) | `GAME_NOT_FOUND` |
-| `game:list` | `{ roomId: string }` | `XoGame[]` เกมที่ยังไม่จบของห้องนั้น | - |
+| `game:leave` | `{ gameId: string }` | `XoGame` (`over` หรือ `closed`) | `GAME_NOT_FOUND` |
+| `game:rematch` | `{ gameId: string }` | `XoGame` (`over` รออีกคน หรือ `playing` รอบใหม่) | `GAME_NOT_FOUND` |
+| `game:ask` | `{ gameId: string, names: string[] }` (กลุ่มเท่านั้น) | `XoGame` (`invitees` เพิ่มขึ้น) | `GAME_NOT_FOUND`, `USER_OFFLINE` |
+| `game:list` | `{ roomId: string }` | `XoGame[]` โต๊ะที่ยังเปิดของห้องนั้น | - |
 
-- **DM**: ชวนอีกฝั่งในห้องได้เมื่อเขาออนไลน์ เขากดรับเกมจะเริ่ม กดปฏิเสธเกมจะจบ (`declined`)
-- **กลุ่ม**: สมาชิกคนไหนก็กดรับได้ คนแรกที่รับได้เล่น คนอื่นได้ `GAME_NOT_FOUND` และดูเกมต่อได้ คนที่ปฏิเสธถูกใส่ใน `declined` แต่คำชวนยังเปิดให้คนอื่น
-- รับคำชวนของคนอื่นแล้ว คำชวนที่ตัวเองส่งไว้จะถูกยกเลิก (`cancelled`) เพื่อไม่ให้อยู่ 2 เกมพร้อมกัน
-- `game:leave`: คนชวนยกเลิกคำชวน, คนถูกชวนใน DM ปฏิเสธ, ผู้เล่นยอมแพ้ (`forfeit` อีกฝั่งชนะ) ถ้าหลุดการเชื่อมต่อจะเหมือนเรียก `game:leave`
+- **DM**: ชวนอีกฝั่งในห้องได้เมื่อเขาออนไลน์ เขากดรับเกมจะเริ่ม กดปฏิเสธคนชวนจะเหลือคนเดียวที่โต๊ะ (`declined`)
+- **กลุ่ม**: `game:invite` เปิดโต๊ะก่อน แล้วคนชวนเลือกสมาชิกที่ออนไลน์ด้วย `game:ask` ได้ทีละหลายคน (เพิ่มทีหลังได้) ชื่อต้องเป็นสมาชิกคนอื่นในกลุ่ม ไม่อย่างนั้นได้ `INVALID_INPUT` ออฟไลน์ได้ `USER_OFFLINE`
+  - กดรับ/ปฏิเสธได้เฉพาะคนใน `invitees` (คนอื่นได้ `INVALID_INPUT`) คนแรกที่รับได้เล่น คนอื่นได้ `GAME_NOT_FOUND` และดูเกมต่อได้
+  - คนที่ปฏิเสธถูกใส่ใน `declined` คำชวนยังเปิดให้คนอื่น ถ้าถูก `game:ask` อีกครั้งจะได้คำชวนคืน
+  - `game:update` ยังส่งเข้า room ของกลุ่ม (สมาชิกเท่านั้น) แต่ React แสดงการ์ดตอนรอรับเฉพาะคนชวนและคนที่ถูกเชิญ พอเริ่มเล่นสมาชิกทุกคนดูได้
+- **จบรอบ** (`over`): โต๊ะยังเปิด การ์ดใบเดิมใช้ต่อ ผู้เล่น 2 คนเลือก `game:rematch` หรือ `game:leave` ต้องกด `game:rematch` ครบทั้ง 2 คน รอบใหม่จึงเริ่มบนโต๊ะเดิม (id เดิม)
+- ถ้าอีกฝั่งออก (`left`) คนที่เหลือ `game:rematch` ไม่ได้แล้ว ให้ชวนใหม่ด้วย `game:invite` (โต๊ะเก่าจะปิด) หรือ `game:leave`
+- ทุกคนออกจากโต๊ะแล้ว server ส่ง `game:update` สถานะ `closed` ครั้งสุดท้าย ให้ React ลบการ์ด
+- ชวนหรือรับเกมใหม่ จะออกจากโต๊ะที่จบแล้วและคำชวนที่ตัวเองส่งไว้อัตโนมัติ (`cancelled` = `closed`) เพื่อไม่ให้อยู่ 2 เกมพร้อมกัน
+- `game:leave`: คนชวนยกเลิกคำชวน (โต๊ะปิด), คนถูกชวนใน DM ปฏิเสธ, ผู้เล่นยอมแพ้ (`forfeit` อีกฝั่งชนะ), หรือออกหลังจบรอบ ถ้าหลุดการเชื่อมต่อจะเหมือนเรียก `game:leave`
 - ลบกลุ่ม (`group:delete`) แล้วเกมที่ค้างในกลุ่มนั้นหายไปด้วย ไม่มี `game:update` ตามมา React ทิ้งเกมของกลุ่มนั้นเองเมื่อได้ `group:deleted`
-- จบแบบชนะ เสมอ หรือยอมแพ้ server บันทึกผลเป็นข้อความธรรมดา เช่น `🎮 XO: alice beat bob` แล้วส่ง `message:new` ในห้องนั้น
+- ทุกรอบที่จบแบบชนะ เสมอ หรือยอมแพ้ server บันทึกผลเป็นข้อความธรรมดา เช่น `🎮 XO: alice beat bob` แล้วส่ง `message:new` ในห้องนั้น
 
 ### การลบ
 
@@ -277,7 +288,7 @@ React ส่ง `typing: true` ไม่เกิน 1 ครั้งทุก 
 | `users:list` | `string[]` | มีคน login หรือหลุดการเชื่อมต่อ | ทุกคนที่ login แล้ว | R4 |
 | `groups:list` | `GroupInfo[]` | login, สร้างกลุ่ม, เข้ากลุ่ม | ดูที่ event ต้นทาง | R9 |
 | `message:new` | `ChatMessage` | มีข้อความใหม่ | สมาชิกในห้องนั้นเท่านั้น | R6, R7, R11 |
-| `game:update` | `XoGame` | เกม XO ถูกชวน รับ เดิน หรือจบ | คนในห้องของเกมนั้นเท่านั้น | special point |
+| `game:update` | `XoGame` | เกม XO ถูกชวน รับ เดิน จบรอบ เริ่มรอบใหม่ มีคนออก หรือโต๊ะปิด | คนในห้องของเกมนั้นเท่านั้น | special point |
 | `message:deleted` | `{ messageId, roomId }` | ข้อความถูกลบ | ผู้เข้าร่วม DM ที่ออนไลน์ หรือ socket ในกลุ่ม | - |
 | `group:deleted` | `{ groupId }` | กลุ่มถูกลบ | ผู้ใช้ที่ login ทั้งหมด | - |
 | `avatars:list` | `UserAvatar[]` | login | คนที่เพิ่ง login | Special |
