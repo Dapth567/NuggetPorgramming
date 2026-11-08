@@ -1,4 +1,5 @@
-import { dmRoomId } from "@chat/shared";
+import { AI_NAME, dmRoomId } from "@chat/shared";
+import { answerInRoom } from "../ai.js";
 import { saveMessage } from "../repo/messages.js";
 import { userExists } from "../repo/users.js";
 import { state } from "../state.js";
@@ -22,6 +23,15 @@ export function registerDmHandlers(io: ChatServer, socket: ChatSocket) {
     if (!isValidName(to) || to === name || !isValidText(text)) return ack(INVALID_INPUT);
 
     try {
+      if (to === AI_NAME) {
+        // A DM with the AI: only the asker sees the question and the answer (Special Point).
+        const roomId = dmRoomId(name, AI_NAME);
+        const message = await saveMessage(roomId, name, text);
+        socket.emit("message:new", message);
+        ack({ ok: true, data: message });
+        return void answerInRoom(io, roomId, { user: name });
+      }
+
       if (!(await userExists(to))) return ack({ ok: false, error: "USER_NOT_FOUND" });
 
       const message = await saveMessage(dmRoomId(name, to), name, text);

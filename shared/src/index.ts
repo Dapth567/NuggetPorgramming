@@ -16,6 +16,20 @@ export const LIMITS = {
 /** Letters, marks, digits and `_`. Thai is allowed; `|` is not, because it separates DM names. */
 export const NAME_PATTERN = /^[\p{L}\p{M}\p{N}_]+$/u;
 
+/**
+ * The AI assistant (Special Point). It is not a real login: nobody can register or log in with
+ * this name, it is never in `users:list`, and it never joins a group.
+ * DM it with `dm:send`, or start a group message with `@AI` to ask it in that group.
+ */
+export const AI_NAME = "AI";
+/** What the screen shows instead of `AI_NAME`. A user name cannot have a space, so this is display only. */
+export const AI_DISPLAY_NAME = "Mash Kyrielight";
+
+/** True when a group message asks the AI: `@AI` as a word, in any case. */
+export function mentionsAi(text: string): boolean {
+  return /(^|[^\p{L}\p{M}\p{N}_])@ai(?![\p{L}\p{M}\p{N}_])/iu.test(text);
+}
+
 export function dmRoomId(nameA: string, nameB: string): string {
   return `dm:${[nameA, nameB].sort().join("|")}`;
 }

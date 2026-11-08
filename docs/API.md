@@ -236,6 +236,23 @@ server ตรวจสมาชิก บันทึกข้อความ �
 ทั้งสอง event ตอบ ack ตามรูปแบบ `Ack<void>` ต้อง login และข้อมูลต้องเป็น UUID
 การลบกลุ่มต้องติดตั้ง [`supabase/delete_group.sql`](../supabase/delete_group.sql) ใน Supabase ก่อน
 
+### ผู้ช่วย AI (special point)
+
+ไม่มี event ใหม่ ใช้ `dm:send` และ `group:send` เดิม ผู้ใช้ชื่อ `AI_NAME` (`"AI"`) จาก `@chat/shared` เป็นผู้ตอบ
+server เป็นฝ่ายเรียก Google Gemini API ผ่าน HTTPS ด้วย `GEMINI_API_KEY` ใน `.env` React ไม่เคยเห็น key และไม่ได้ต่อ Gemini เอง
+
+| วิธีเรียก | ทำอย่างไร | คนที่เห็นคำตอบ |
+| --- | --- | --- |
+| DM | `dm:send` `{ to: "AI", text }` | ผู้ถามคนเดียว |
+| กลุ่ม | `group:send` ที่ข้อความมี `@AI` (เช็กด้วย `mentionsAi(text)`) | สมาชิกทุกคนในกลุ่ม |
+
+- ack ของข้อความผู้ถามมาก่อนเหมือนปกติ จากนั้น server ส่ง `typing:update` (`name: "AI"`) ระหว่างรอ แล้วบันทึกคำตอบและส่งเป็น `message:new` ที่ `sender` เป็น `"AI"`
+- AI อ่านข้อความล่าสุด 20 ข้อความของห้องนั้น จึงตอบตามบทสนทนาได้
+- หน้าเว็บแสดงชื่อ `AI_DISPLAY_NAME` (`"Mash Kyrielight"`) และรูป `client/src/assets/ai-mash.jpg` แทน `"AI"` แต่ `sender` ในข้อมูลยังเป็น `"AI"` และเรียกในกลุ่มด้วย `@AI`
+- AI ไม่เคย login ไม่อยู่ใน `users:list` และไม่เป็นสมาชิกกลุ่มไหน R4, R8 และ R9 จึงไม่เปลี่ยน
+- ห้องหนึ่งถามได้ทีละคำถาม ถ้าถามซ้อนระหว่างรอ AI ตอบว่าให้รอสักครู่ server ลองโมเดลตามลำดับ (`gemini-3.5-flash` แล้ว `gemini-3.5-flash-lite` แล้ว `gemini-flash-lite-latest`, เปลี่ยนได้ด้วย `GEMINI_MODELS` ใน `.env`) รุ่นไหนโควตาฟรีหมด (429) จะถูกข้ามจนถึงเวลาที่ Gemini บอก ถ้าทุกรุ่นตอบไม่ได้ AI ตอบว่าตอบไม่ได้ ถ้าไม่ได้ตั้ง key AI ตอบว่ายังไม่ได้ตั้งค่า
+- สมัครหรือ login ด้วยชื่อ `AI` (ตัวพิมพ์ใดก็ได้) ไม่ได้ ได้ `NAME_TAKEN` และ `WRONG_CREDENTIALS`
+
 ### `profile:avatar`
 
 ตั้งหรือลบรูปโปรไฟล์ของคนที่ login อยู่เท่านั้น ส่ง `{ image: null }` เพื่อลบรูป ตอบ ack แบบ `Ack<void>`
