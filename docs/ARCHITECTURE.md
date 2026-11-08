@@ -10,6 +10,7 @@
 - **Server** มี 2 โปรแกรม คือ Vite (ส่งไฟล์หน้าเว็บ) และ chat server (รับส่งแชต)
 - **เครื่อง server** จะเป็นเครื่องเดียวกับ client หรือเครื่องที่สามก็ได้ ตามที่โจทย์อนุญาต
 - **Supabase** เป็นที่เก็บข้อมูลเท่านั้น client ไม่ได้ต่อ Supabase โดยตรง
+- **Google Gemini API** ตอบแทน AI (Mash Kyrielight) server เรียกเมื่อมีคน DM หา AI หรือพิมพ์ `@AI` ในกลุ่ม client ไม่ได้ต่อ Gemini โดยตรง และ key อยู่ฝั่ง server เท่านั้น
 - **ทุก client ต้องต่อ chat server ตัวเดียวกัน** รายชื่อออนไลน์และการส่งข้อความอยู่ในหน่วยความจำของ server ตัวนั้น
 
 ## Protocol ที่ใช้
@@ -21,7 +22,7 @@
 | HTTP | โหลดหน้าเว็บ และเริ่ม WebSocket | เป็นวิธีมาตรฐานที่ browser ใช้ และ WebSocket ต้องเริ่มจาก HTTP | Vite ส่งไฟล์หน้าเว็บที่พอร์ต 5173 และ client ขอ `Upgrade: websocket` ที่พอร์ต 3000 |
 | WebSocket | รับส่งแชตทุกอย่าง | full-duplex ใช้การเชื่อมต่อเดียว server ส่งข้อความหา client ได้ทันทีโดยไม่ต้องรอให้ client ถาม | บังคับด้วย `transports: ["websocket"]` ทั้งสองฝั่ง |
 | Socket.IO | ชั้น event บน WebSocket | มี event, room, ack และการต่อใหม่ให้ ไม่ต้องเขียนเองทั้งหมด | ใช้ event เช่น `dm:send`, `message:new` และแยกกลุ่มด้วย room `group:<id>` |
-| HTTPS | server คุยกับ Supabase | เข้ารหัสข้อมูลและ secret key ระหว่างทาง | `server/src/repo/` เรียก Supabase ผ่าน `@supabase/supabase-js` |
+| HTTPS | server คุยกับ Supabase และ Google Gemini API | เข้ารหัสข้อมูลและ secret key ระหว่างทาง | `server/src/repo/` เรียก Supabase ผ่าน `@supabase/supabase-js` และ `server/src/ai.ts` เรียก Gemini ด้วย `fetch` ที่พอร์ต 443 |
 
 ## ข้อความหนึ่งเดินทางอย่างไร
 
@@ -52,7 +53,7 @@
 - ฝั่ง server ไม่มี REST route และฝั่ง React ไม่มีการเรียก `fetch` หรือ Supabase
 - `server/test/chat-server.test.ts` ตรวจเรื่องการปฏิเสธ long-polling ทุกครั้งที่รัน `npm test`
 - HTTP ที่พอร์ต 5173 ส่งแค่ไฟล์หน้าเว็บ ไม่มีข้อความแชต
-- HTTPS ไป Supabase เป็นการเก็บข้อมูลระหว่าง server กับฐานข้อมูล ไม่ใช่การรับส่งระหว่าง server กับ client
+- HTTPS ไป Supabase และ Gemini เป็นการคุยระหว่าง server กับบริการภายนอก ไม่ใช่การรับส่งระหว่าง server กับ client คำตอบของ AI กลับถึง client ทาง `message:new` บน WebSocket เหมือนข้อความทั่วไป
 
 ## การต่อข้ามเครื่องตอน demo
 
