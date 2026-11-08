@@ -52,7 +52,7 @@ export function useChat(preview = false) {
   const [games, setGames] = useState<Record<string, XoGame>>(preview ? PREVIEW_GAMES : {});
 
   const addGame = useCallback((game: XoGame) => {
-    setGames((prev) => ({ ...prev, [game.id]: game }));
+    setGames(({ [game.id]: _, ...rest }) => (game.status === "closed" ? rest : { ...rest, [game.id]: game }));
   }, []);
   /** Who else is typing, by room id. */
   const [typingByRoom, setTypingByRoom] = useState<Record<string, string[]>>(preview ? PREVIEW_TYPING : {});
@@ -356,7 +356,15 @@ export function useChat(preview = false) {
     (gameId: string) => play(() => socket.emitWithAck("game:leave", { gameId })),
     [play],
   );
-  /** Hides a finished game's card. */
+  const rematchGame = useCallback(
+    (gameId: string) => play(() => socket.emitWithAck("game:rematch", { gameId })),
+    [play],
+  );
+  const askGame = useCallback(
+    (gameId: string, names: string[]) => play(() => socket.emitWithAck("game:ask", { gameId, names })),
+    [play],
+  );
+  /** Hides a finished game's card for someone who only watched it. */
   const dismissGame = useCallback((gameId: string) => {
     setGames(({ [gameId]: _, ...rest }) => rest);
   }, []);
@@ -388,6 +396,8 @@ export function useChat(preview = false) {
     respondGame,
     moveGame,
     leaveGame,
+    rematchGame,
+    askGame,
     dismissGame,
   };
 }

@@ -141,7 +141,7 @@ React component
 | --- | --- | --- |
 | `server/src/handlers/ai.ts` | ยังไม่มี | รับ event ของฟีเจอร์ AI (เช่น `ai:summarize` สรุปบทสนทนาจาก `room:history`) ตรวจสิทธิ์ห้องแบบเดียวกับ `room.ts` |
 | `server/src/ai/client.ts` | ยังไม่มี | เรียก API ของโมเดล AI จาก server เท่านั้น อ่าน key จาก `.env` ห้ามส่ง key ไปที่ React |
-| `server/src/handlers/game.ts` | มีแล้ว | เกม XO ในห้อง DM และกลุ่ม: `game:invite`, `game:respond`, `game:move`, `game:leave`, `game:list` server เป็นคนตัดสินทุกตา เก็บเกมใน `state.games` ส่ง `game:update` ให้คนในห้องนั้นเท่านั้น หลุดการเชื่อมต่อถือว่าออกจากเกม จบแล้วบันทึกผลเป็นข้อความแชต |
+| `server/src/handlers/game.ts` | มีแล้ว | เกม XO ในห้อง DM และกลุ่ม: `game:invite`, `game:respond`, `game:move`, `game:leave`, `game:rematch`, `game:ask` (กลุ่ม: เลือกเชิญสมาชิกที่ออนไลน์หลายคน คนแรกที่รับได้เล่น), `game:list` server เป็นคนตัดสินทุกตา เก็บเกมใน `state.games` ส่ง `game:update` ให้คนในห้องนั้นเท่านั้น จบรอบแล้วโต๊ะยังเปิด กดเล่นอีกครบ 2 คนเริ่มรอบใหม่บนโต๊ะเดิม ทุกคนออกแล้วโต๊ะปิด หลุดการเชื่อมต่อถือว่าออกจากเกม ทุกรอบบันทึกผลเป็นข้อความแชต |
 | `server/src/handlers/typing.ts` | มีแล้ว | `typing:set` แสดงว่ากำลังพิมพ์ ส่งต่อเป็น `typing:update` ให้คนอื่นในห้องเดียวกันเท่านั้น ไม่บันทึกลงฐานข้อมูล ตรวจสิทธิ์จาก `socket.rooms` (กลุ่ม) และชื่อใน `roomId` (DM) |
 
 ถ้าเลือก special point อื่น ให้ตั้งชื่อ `server/src/handlers/<ชื่อฟีเจอร์>.ts` แล้วเพิ่มแถวในตารางนี้
@@ -161,7 +161,7 @@ React component
 | `server/test/delete.test.ts` | มีแล้ว | สิทธิ์ลบข้อความและกลุ่ม การแจ้งเตือน และการลบประวัติ | - |
 | `server/test/profile.test.ts` | มีแล้ว | ตรวจชนิดและขนาดรูปโปรไฟล์, แจ้งทุกคนเมื่อเปลี่ยนรูป, โหลดรูปตอน login | Special |
 | `server/test/room.test.ts` | มีแล้ว | คนนอกห้องโหลดประวัติไม่ได้, ประวัติเรียงเก่าไปใหม่ | R5, R7, R11 |
-| `server/test/game.test.ts` | มีแล้ว | เกม XO: คำชวนใน DM ถึงแค่ 2 คน, ปฏิเสธ, เล่นจนชนะและเสมอ, เดินผิดตาหรือช่องซ้ำไม่ได้, ในกลุ่มคนแรกที่รับได้เล่น คนนอกกลุ่มไม่เห็นอะไรเลย, อยู่ 2 เกมพร้อมกันไม่ได้, ยอมแพ้และหลุดแล้วแพ้ | special point |
+| `server/test/game.test.ts` | มีแล้ว | เกม XO: คำชวนใน DM ถึงแค่ 2 คน, ปฏิเสธ, เล่นจนชนะและเสมอ, เดินผิดตาหรือช่องซ้ำไม่ได้, ในกลุ่มคนแรกที่รับได้เล่น คนนอกกลุ่มไม่เห็นอะไรเลย, อยู่ 2 เกมพร้อมกันไม่ได้, ยอมแพ้และหลุดแล้วแพ้, รอบใหม่เริ่มเมื่อกดเล่นอีกครบ 2 คน, ออกครบแล้วโต๊ะปิด | special point |
 | `server/test/typing.test.ts` | มีแล้ว | สมาชิกคนอื่นเห็นว่ากำลังพิมพ์ แต่ผู้พิมพ์และคนนอกห้องไม่ได้รับ, คนนอกส่งเข้ากลุ่มหรือ DM ของคนอื่นไม่ได้, room id ผิดรูปแบบ | Special |
 
 ### `client/` ฝั่ง React
@@ -175,7 +175,7 @@ React component
 | `client/src/main.tsx` | มีแล้ว | render `<App />` ไม่ต้องแก้ นอกจาก import `styles.css` | - |
 | `client/src/socket.ts` | มีแล้ว | การเชื่อมต่อ Socket.IO อันเดียวของทั้งเว็บ (websocket เท่านั้น) ห้ามสร้างการเชื่อมต่อใหม่ที่อื่น | R1, R2 |
 | `client/src/App.tsx` | มีแล้ว (TODO) | เรียก `useChat()` แล้วเลือกหน้า: ยังไม่ login แสดง `LoginPage` login แล้วแสดง `ChatPage` ตอนนี้แสดงแค่สถานะการเชื่อมต่อ | - |
-| `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new`, `game:update` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack แต่กลุ่มจาก ack ของ `group:create` และ `group:join` ใส่ใน `groups` ทันที ไม่ต้องรอ `groups:list` เกม XO: state `games` และฟังก์ชัน `inviteGame`, `respondGame`, `moveGame`, `leaveGame`, `dismissGame` (`openRoom` โหลด `game:list` มาด้วย) | R3-R11 |
+| `client/src/useChat.ts` | มีแล้ว (ครบทุกฟังก์ชัน ต่อ event ของ R5-R11 ไว้แล้ว) | hook กลาง ที่เดียวที่เรียก `socket.on` และ `emitWithAck` ลงทะเบียน listener `users:list`, `groups:list`, `message:new`, `game:update` ก่อน login เก็บ state `me`, `users`, `groups`, `messagesByRoom` (แยกตาม `roomId` เก็บทุกห้องแม้ไม่ได้เปิด), `activeRoomId` และมีฟังก์ชัน `register`, `login`, `logout`, `openRoom` (เรียก `room:history`), `sendDm`, `createGroup`, `joinGroup`, `sendGroup` แสดงข้อความจาก `message:new` เท่านั้น ไม่เพิ่มจาก ack แต่กลุ่มจาก ack ของ `group:create` และ `group:join` ใส่ใน `groups` ทันที ไม่ต้องรอ `groups:list` เกม XO: state `games` และฟังก์ชัน `inviteGame`, `respondGame`, `moveGame`, `leaveGame`, `rematchGame`, `askGame`, `dismissGame` (`openRoom` โหลด `game:list` มาด้วย) | R3-R11 |
 | `client/src/avatar.ts` | มีแล้ว | `toAvatar(file)` ครอบรูปเป็นสี่เหลี่ยมจัตุรัสและย่อเป็น JPEG ก่อนส่งผ่าน socket | Special |
 | `client/src/errors.ts` | ยังไม่มี | แปลง `ErrorCode` เป็นข้อความภาษาไทยที่แสดงให้ผู้ใช้ | - |
 | `client/src/styles.css` | ยังไม่มี | style ทั้งเว็บ ไฟล์เดียว ถ้ายาวมากค่อยแยกตาม component | R6 |
@@ -188,7 +188,7 @@ React component
 | `client/src/components/MessageList.tsx` | ยังไม่มี | chat window แสดงข้อความที่ส่งไปและข้อความใหม่ที่เข้ามา พร้อมชื่อผู้ส่งและเวลา เลื่อนลงล่างสุดเมื่อมีข้อความใหม่ | R6 |
 | `client/src/components/MessageInput.tsx` | ยังไม่มี | chat box ช่องพิมพ์และปุ่มส่ง กด Enter เพื่อส่ง ห้ามส่งข้อความว่าง | R6 |
 
-| `client/src/components/XoGame.tsx` | มีแล้ว | เกม XO: ปุ่ม 🎮 ข้างช่องพิมพ์ (`XoInviteButton`), การ์ดเกมในห้องแชต (`XoGameCard`) ที่มีปุ่มรับ ปฏิเสธ ยกเลิก ยอมแพ้ เล่นอีกครั้ง และไอคอน 🎮 ในแถบข้างเมื่อมีคำชวนรออยู่ (`XoBadge`) | special point |
+| `client/src/components/XoGame.tsx` | มีแล้ว | เกม XO: ปุ่ม 🎮 ข้างช่องพิมพ์ (`XoInviteButton`), การ์ดเกมในห้องแชต (`XoGameCard`) ที่มีรายชื่อสมาชิกกลุ่มที่ออนไลน์ให้ติ๊กเชิญหลายคน ปุ่มรับ ปฏิเสธ ยกเลิก ยอมแพ้ และหลังจบรอบมีปุ่มเล่นอีก/ออก (เหลือคนเดียวเป็นชวนใหม่/ออก) และไอคอน 🎮 ในแถบข้างเมื่อมีคำชวนรออยู่ (`XoBadge`) | special point |
 | `client/src/components/XoGame.css` | มีแล้ว | หน้าตาของเกม XO ใช้ตัวแปรสีจาก `styles.css` เท่านั้น | special point |
 
 ไฟล์ React ของ special point ให้ตั้งชื่อ `client/src/components/<ชื่อฟีเจอร์>.tsx` เช่น `SummaryButton.tsx`, `TypingIndicator.tsx` แล้วเพิ่มแถวในตารางนี้
