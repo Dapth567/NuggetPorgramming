@@ -1,5 +1,5 @@
 import { AI_NAME, groupRoomId } from "@chat/shared";
-import { sendAvatarsList, sendGroupsList, sendUsersList } from "../broadcast.js";
+import { sendAllUsers, sendAvatarsList, sendGroupsList, sendUsersList } from "../broadcast.js";
 import { hashPassword, verifyPassword } from "../password.js";
 import { createUser, findUser } from "../repo/users.js";
 import { groupsOf } from "../repo/groups.js";
@@ -19,10 +19,14 @@ export function registerAuthHandlers(io: ChatServer, socket: ChatSocket) {
     try {
       const created = await createUser(name, await hashPassword(password));
       ack(created ? { ok: true, data: undefined } : { ok: false, error: "NAME_TAKEN" });
+      if (!created) return;
     } catch (error) {
       console.error("[auth:register]", error);
-      ack({ ok: false, error: "SERVER_ERROR" });
+      return ack({ ok: false, error: "SERVER_ERROR" });
     }
+
+    // Everyone already in the chat sees the new name, offline until they log in.
+    sendAllUsers(io).catch((error) => console.error("[auth:register] users:all", error));
   });
 
   socket.on("auth:login", async (payload, ack) => {
@@ -53,6 +57,7 @@ export function registerAuthHandlers(io: ChatServer, socket: ChatSocket) {
       sendUsersList(io);
       // Photos are optional, so a failure here must not stop the login.
       sendAvatarsList(socket).catch((error) => console.error("[auth:login] avatars:list", error));
+      sendAllUsers(socket).catch((error) => console.error("[auth:login] users:all", error));
       await sendGroupsList(socket);
     } catch (error) {
       console.error("[auth:login]", error);

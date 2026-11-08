@@ -108,6 +108,9 @@ input:focus { border-color: var(--accent); }
 .item:hover, .item.active { background: var(--raised); }
 .item.active { box-shadow: inset 3px 0 0 var(--accent); }
 .item.self { cursor: default; }
+.item.offline .avatar, .item.offline .item-name { opacity: 0.55; }
+.item.offline:hover .avatar, .item.offline:hover .item-name, .item.offline.active .avatar, .item.offline.active .item-name { opacity: 1; }
+.section-count.muted { color: var(--muted); }
 .ai-tag { flex-shrink: 0; padding: 2px 7px; border-radius: 999px; background: var(--raised); color: var(--accent); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; }
 
 .item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; font-weight: 600; }

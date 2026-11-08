@@ -149,6 +149,8 @@ export interface TypingUpdate {
 
 export interface ServerToClientEvents {
   "users:list": (names: string[]) => void;
+  /** Every registered user, online or not, except the AI. React shows the ones not in `users:list` as offline. */
+  "users:all": (names: string[]) => void;
   "groups:list": (groups: GroupInfo[]) => void;
   "message:new": (message: ChatMessage) => void;
   "game:update": (game: XoGame) => void;

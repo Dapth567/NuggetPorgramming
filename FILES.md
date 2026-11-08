@@ -118,9 +118,9 @@ React component
 | `server/src/check-db.ts` | มีแล้ว | สคริปต์ `npm run check:db` ตรวจว่าต่อทุกตารางได้ | - |
 | `server/src/validate.ts` | มีแล้ว | ฟังก์ชันตรวจข้อมูลตามกฎใน `LIMITS` และ `NAME_PATTERN` (ชื่อ, รหัสผ่าน, ชื่อกลุ่ม, ข้อความ) และ `requireLogin(socket)` ที่คืนชื่อผู้ใช้หรือบอกว่าต้องตอบ `NOT_LOGGED_IN` ทุก handler ใช้ไฟล์นี้ ห้ามเขียนตรวจเองในแต่ละ handler | R3, R6-R11 |
 | `server/src/password.ts` | มีแล้ว | `hashPassword()` และ `verifyPassword()` ด้วย `node:crypto` (scrypt) ไม่ต้องลง library เพิ่ม ห้ามเก็บรหัสผ่านตรง ๆ | R3 |
-| `server/src/broadcast.ts` | มีแล้ว | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว, `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก, `sendAvatarsList(socket)` และ `sendAvatarUpdate(io, name, image)` ส่งรูปโปรไฟล์ ใช้ร่วมกันหลาย handler | R4, R9 |
+| `server/src/broadcast.ts` | มีแล้ว | `sendUsersList(io)` ส่งรายชื่อออนไลน์ให้ทุกคนที่ login แล้ว, `sendAllUsers(target)` ส่งรายชื่อทุกคนที่สมัครไว้ (ไม่รวม AI) ให้หน้าเว็บแสดงคน OFFLINE, `sendGroupsList(target)` ส่งรายการกลุ่มทั้งหมดพร้อมสมาชิก, `sendAvatarsList(socket)` และ `sendAvatarUpdate(io, name, image)` ส่งรูปโปรไฟล์ ใช้ร่วมกันหลาย handler | R4, R9 |
 | `server/src/handlers/profile.ts` | มีแล้ว | `profile:avatar` ตั้งหรือลบรูปโปรไฟล์ของคนที่ login อยู่ | Special |
-| `server/src/repo/users.ts` | มีแล้ว | `createUser()`, `findUser()`, `userExists()`, `setAvatar()`, `listAvatars()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
+| `server/src/repo/users.ts` | มีแล้ว | `createUser()`, `findUser()`, `userExists()`, `setAvatar()`, `listAvatars()`, `listUserNames()` บนตาราง `users` แปลง `snake_case` เป็น `camelCase` | R3, R7 |
 | `server/src/repo/groups.ts` | มีแล้ว | `createGroup()` (ใส่ผู้สร้างเป็นสมาชิกคนเดียว), `listGroups()` (รวมรายชื่อสมาชิก), `findGroup()`, `addMember()`, `isMember()`, `groupsOf(name)` บนตาราง `groups` และ `group_members` | R8-R11 |
 | `server/src/repo/messages.ts` | มีแล้ว | `saveMessage()` และ `roomHistory(roomId, limit)` บนตาราง `messages` คืนเป็น `ChatMessage` | R5, R7, R11 |
 
@@ -154,7 +154,7 @@ React component
 | --- | --- | --- | --- |
 | `server/test/chat-server.test.ts` | มีแล้ว | ต่อได้ด้วย websocket, ปฏิเสธ polling, ack ทำงาน, event ที่ไม่มี callback, callback อยู่ผิดช่อง หรือ argument เกิน ไม่ทำให้ server ล่ม, `dmRoomId`, `NAME_PATTERN` | R2 |
 | `server/test/helpers.ts` | มีแล้ว | เปิด server ชั่วคราว สร้าง client ที่ login แล้ว สุ่มชื่อผู้ใช้ทดสอบ ใช้ร่วมกันทุกไฟล์ทดสอบ | - |
-| `server/test/auth.test.ts` | มีแล้ว | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด | R3, R4 |
+| `server/test/auth.test.ts` | มีแล้ว | สมัครชื่อซ้ำ, รหัสผิด, login ซ้อน, `users:list` มีชื่อตัวเองและหายเมื่อหลุด, `users:all` มีคนออฟไลน์และอัปเดตเมื่อมีคนสมัคร ลบผู้ใช้ที่สร้างหลังเทสต์ | R3, R4 |
 | `server/test/dm.test.ts` | มีแล้ว | ผู้ส่งและผู้รับได้ `message:new` แต่คนที่สามไม่ได้, ส่งหาตัวเองไม่ได้ | R5, R7 |
 | `server/test/membership.test.ts` | มีแล้ว | เข้ากลุ่มได้เฉพาะตัวเอง (แนบชื่อคนอื่นมาก็ไม่ถูกเพิ่ม), เข้าซ้ำได้ `ALREADY_A_MEMBER`, ทุกเครื่องเห็นสมาชิกใหม่, เข้าแล้วได้รับข้อความและประวัติของกลุ่ม | R9, R10, R11 |
 | `server/test/group.test.ts` | มีแล้ว (`group:join` ทดสอบใน `membership.test.ts`) | สร้างกลุ่มแล้วมีสมาชิกคนเดียว, ทุกคนเห็นกลุ่ม, เข้ากลุ่มเอง, คนนอกกลุ่มส่งและรับข้อความไม่ได้ | R8-R11 |

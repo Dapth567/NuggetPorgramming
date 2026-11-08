@@ -1,5 +1,6 @@
+import { AI_NAME } from "@chat/shared";
 import { listGroups } from "./repo/groups.js";
-import { listAvatars } from "./repo/users.js";
+import { listAvatars, listUserNames } from "./repo/users.js";
 import { state } from "./state.js";
 import type { ChatServer, ChatSocket } from "./types.js";
 
@@ -9,6 +10,21 @@ export function sendUsersList(io: ChatServer) {
   // io.to([]) would reach every socket, including ones that have not logged in.
   if (socketIds.length === 0) return;
   io.to(socketIds).emit("users:list", [...state.onlineUsers.keys()].sort());
+}
+
+/**
+ * Send every registered user, so React can show who is offline and DM them too: pass a socket for
+ * one client that has just logged in, or `io` for all logged-in clients after someone registers.
+ */
+export async function sendAllUsers(target: ChatServer | ChatSocket) {
+  // The AI has its own place in the sidebar; it is never a friend who is "offline".
+  const names = (await listUserNames()).filter((name) => name !== AI_NAME);
+  if ("sockets" in target) {
+    const socketIds = [...state.onlineUsers.values()];
+    if (socketIds.length > 0) target.to(socketIds).emit("users:all", names);
+  } else {
+    target.emit("users:all", names);
+  }
 }
 
 /** Send every profile photo to one client that has just logged in. */

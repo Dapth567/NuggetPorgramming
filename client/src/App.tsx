@@ -146,7 +146,9 @@ function typingLine(names: string[]): string | null {
 }
 
 function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
-  const { users, groups, messagesByRoom, avatars, openRoom, typingByRoom, notifyTyping, stopTyping } = chat;
+  const { users, allUsers, groups, messagesByRoom, avatars, openRoom, typingByRoom, notifyTyping, stopTyping } = chat;
+  // Everyone registered who is not online. Shown under ONLINE, which stays exactly as R4 asks.
+  const offline = allUsers.filter((name) => name !== me && !users.includes(name));
   const [room, setRoom] = useState<Room | null>(null);
   const [text, setText] = useState("");
   const [notice, setNotice] = useState("");
@@ -239,7 +241,9 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
   const title = room?.kind === "dm" ? shownName(room.name) : group?.name;
   const subtitle = group
     ? group.members.join(", ")
-    : withAi ? "AI assistant · Google Gemini" : room ? "Direct message" : "";
+    : withAi ? "AI assistant · Google Gemini"
+    : room?.kind === "dm" && !users.includes(room.name) ? "Offline · they will see your messages when they log in"
+    : room ? "Direct message" : "";
 
   return (
     <div className="app">
@@ -310,6 +314,21 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               </button>
             ),
           )}
+          {offline.length > 0 && (
+            <div className="section">
+              <span>OFFLINE <span className="section-count muted">{offline.length}</span></span>
+            </div>
+          )}
+          {offline.map((name) => (
+            <button
+              key={name}
+              className={room?.kind === "dm" && room.name === name ? "item offline active" : "item offline"}
+              onClick={() => setRoom({ kind: "dm", name })}
+            >
+              <Avatar label={name} image={avatars.get(name)} />
+              <span className="item-name">{name}</span>
+            </button>
+          ))}
           <div className="section">
             <span>GROUPS</span>
             <button className="small" onClick={createGroup}>
