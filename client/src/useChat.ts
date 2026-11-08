@@ -39,6 +39,8 @@ export function useChat(preview = false) {
   const [connected, setConnected] = useState(socket.connected);
   const [me, setMe] = useState<string | null>(preview ? PREVIEW_ME : null);
   const [users, setUsers] = useState<string[]>(preview ? PREVIEW_USERS : []);
+  /** Every registered user, online or not; the ones not in `users` are offline. */
+  const [allUsers, setAllUsers] = useState<string[]>(preview ? PREVIEW_USERS : []);
   const [groups, setGroups] = useState<GroupInfo[]>(preview ? PREVIEW_GROUPS : []);
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ChatMessage[]>>(
     preview ? PREVIEW_MESSAGES : {},
@@ -105,6 +107,7 @@ export function useChat(preview = false) {
     setDeletedGroupIds(new Set());
     setMe(null);
     setUsers([]);
+    setAllUsers([]);
     setGroups([]);
     setMessagesByRoom({});
     setAvatars(new Map());
@@ -156,6 +159,7 @@ export function useChat(preview = false) {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("users:list", setUsers);
+    socket.on("users:all", setAllUsers);
     socket.on("groups:list", onGroups);
     socket.on("message:new", addMessage);
     socket.on("message:deleted", removeMessage);
@@ -168,6 +172,7 @@ export function useChat(preview = false) {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("users:list", setUsers);
+      socket.off("users:all", setAllUsers);
       socket.off("groups:list", onGroups);
       socket.off("message:new", addMessage);
       socket.off("message:deleted", removeMessage);
@@ -373,6 +378,7 @@ export function useChat(preview = false) {
     connected: preview || connected,
     me,
     users,
+    allUsers,
     groups,
     messagesByRoom,
     avatars,

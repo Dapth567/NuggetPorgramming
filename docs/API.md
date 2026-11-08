@@ -112,6 +112,7 @@ React ควรเช็กก่อนส่งด้วย แต่ server �
 ### `auth:register`
 
 สมัครสมาชิก สำเร็จแล้วยังไม่ถือว่า login ต้องส่ง `auth:login` ต่อ
+server ส่ง `users:all` ให้ทุกคนที่ login อยู่ เพื่อให้เห็นชื่อใหม่ในส่วน OFFLINE
 
 | รายการ | ค่า |
 | --- | --- |
@@ -132,7 +133,7 @@ React ควรเช็กก่อนส่งด้วย แต่ server �
 เมื่อสำเร็จ server จะ
 1. ตอบ ack
 2. ส่ง `users:list` ให้ทุกคน
-3. ส่ง `groups:list` ให้ client คนนี้
+3. ส่ง `users:all` และ `groups:list` ให้ client คนนี้
 4. ให้ socket เข้าห้องของทุกกลุ่มที่เป็นสมาชิกอยู่
 
 ไม่บอกว่าชื่อไม่มีอยู่หรือรหัสผิด ให้ตอบ `WRONG_CREDENTIALS` เหมือนกันทั้งสองกรณี
@@ -286,6 +287,7 @@ React ส่ง `typing: true` ไม่เกิน 1 ครั้งทุก 
 | Event | ข้อมูล | ส่งเมื่อไหร่ | ส่งให้ใคร | Requirement |
 | --- | --- | --- | --- | --- |
 | `users:list` | `string[]` | มีคน login หรือหลุดการเชื่อมต่อ | ทุกคนที่ login แล้ว | R4 |
+| `users:all` | `string[]` ทุกคนที่สมัครไว้ ไม่รวม AI | login (ให้คนที่เพิ่ง login), มีคนสมัครใหม่ (ให้ทุกคนที่ login แล้ว) | ดูช่องก่อนหน้า | ส่วนเสริม: React แสดงคนที่ไม่อยู่ใน `users:list` เป็น OFFLINE และ DM หาได้ ส่วน ONLINE ของ R4 ไม่เปลี่ยน |
 | `groups:list` | `GroupInfo[]` | login, สร้างกลุ่ม, เข้ากลุ่ม | ดูที่ event ต้นทาง | R9 |
 | `message:new` | `ChatMessage` | มีข้อความใหม่ | สมาชิกในห้องนั้นเท่านั้น | R6, R7, R11 |
 | `game:update` | `XoGame` | เกม XO ถูกชวน รับ เดิน จบรอบ เริ่มรอบใหม่ มีคนออก หรือโต๊ะปิด | คนในห้องของเกมนั้นเท่านั้น | special point |
@@ -295,7 +297,7 @@ React ส่ง `typing: true` ไม่เกิน 1 ครั้งทุก 
 | `avatar:updated` | `{ name, image }` (`image` เป็น `null` เมื่อลบรูป) | มีคนเปลี่ยนรูป | ผู้ใช้ที่ login ทั้งหมด | Special |
 | `typing:update` | `{ roomId, name, typing }` | มีคนเริ่มหรือหยุดพิมพ์ | คนอื่นในห้องนั้น ไม่รวมผู้พิมพ์ | Special |
 
-`users:list` และ `groups:list` ส่งรายการเต็มทุกครั้ง ให้ React แทนที่ของเดิมได้เลย
+`users:list`, `users:all` และ `groups:list` ส่งรายการเต็มทุกครั้ง ให้ React แทนที่ของเดิมได้เลย
 
 ### ข้อควรระวังฝั่ง React
 

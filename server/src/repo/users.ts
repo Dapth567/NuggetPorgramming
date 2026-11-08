@@ -30,6 +30,13 @@ export async function userExists(name: string): Promise<boolean> {
   return (await findUser(name)) !== null;
 }
 
+/** Every registered name, sorted. */
+export async function listUserNames(): Promise<string[]> {
+  const { data, error } = await db.from("users").select("name").order("name");
+  if (error) throw new Error(error.message);
+  return data.map((row) => row.name);
+}
+
 /** `image: null` removes the photo. */
 export async function setAvatar(name: string, image: string | null): Promise<void> {
   const { error } = await db.from("users").update({ avatar: image }).eq("name", name);
