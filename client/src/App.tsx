@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
+import { AI_DISPLAY_NAME, AI_NAME, dmRoomId, groupRoomId, LIMITS, NAME_PATTERN, type ErrorCode } from "@chat/shared";
 import { toAvatar } from "./avatar";
 import { GroupList } from "./components/GroupList";
 import { invitesFor, XoBadge, XoGameCard, XoInviteButton } from "./components/XoGame";
 import nugget from "./assets/nugget.png";
+import aiPhoto from "./assets/ai-mash.jpg";
 import { ERROR_TEXT } from "./errors";
 import { useChat, type ChatApi } from "./useChat";
 
@@ -127,6 +128,11 @@ function Avatar({ label, group, image, small }: {
   );
 }
 
+/** The AI's user name is "AI", but the screen shows its character's name. */
+function shownName(name: string) {
+  return name === AI_NAME ? AI_DISPLAY_NAME : name;
+}
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
@@ -156,7 +162,11 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
     (g) => g.roomId === roomId && !(g.status === "invited" && g.declined.includes(me)),
   );
   const invites = invitesFor(chat.games, me);
-  const typing = roomId ? typingLine((typingByRoom[roomId] ?? []).filter((name) => name !== me)) : null;
+  const typing = roomId
+    ? typingLine((typingByRoom[roomId] ?? []).filter((name) => name !== me).map(shownName))
+    : null;
+  // The AI never logs in, so it cannot upload a photo: its picture ships with the app.
+  const photoOf = (name: string) => (name === AI_NAME ? aiPhoto : avatars.get(name));
 
   const showNotice = (message: string) => {
     setNotice(message);
@@ -228,8 +238,11 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
     }
   };
 
-  const title = room?.kind === "dm" ? room.name : group?.name;
-  const subtitle = group ? group.members.join(", ") : room ? "Direct message" : "";
+  const withAi = room?.kind === "dm" && room.name === AI_NAME;
+  const title = room?.kind === "dm" ? shownName(room.name) : group?.name;
+  const subtitle = group
+    ? group.members.join(", ")
+    : withAi ? "AI assistant · Google Gemini" : room ? "Direct message" : "";
 
   return (
     <div className="app">
@@ -265,6 +278,18 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
           </button>
         </header>
         <div className="list">
+          {/* Always here: the AI is not a logged-in user, so it is not in the online list (R4). */}
+          <div className="section">
+            <span>AI ASSISTANT</span>
+          </div>
+          <button
+            className={withAi ? "item ai active" : "item ai"}
+            onClick={() => setRoom({ kind: "dm", name: AI_NAME })}
+          >
+            <Avatar label={AI_NAME} image={aiPhoto} />
+            <span className="item-name">{AI_DISPLAY_NAME}</span>
+            <span className="ai-tag">Gemini</span>
+          </button>
           <div className="section">
             <span>ONLINE <span className="section-count">{users.length}</span></span>
           </div>
@@ -317,7 +342,7 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
               <Avatar
                 label={title ?? "?"}
                 group={room.kind === "group"}
-                image={room.kind === "dm" ? avatars.get(room.name) : undefined}
+                image={room.kind === "dm" ? photoOf(room.name) : undefined}
               />
               <div>
                 <strong>{title ?? "Group not found"}</strong>
@@ -339,11 +364,11 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
                   <div key={m.id} className={className}>
                     {!mine && (
                       <div className="msg-avatar">
-                        {first && <Avatar label={m.sender} image={avatars.get(m.sender)} small />}
+                        {first && <Avatar label={m.sender} image={photoOf(m.sender)} small />}
                       </div>
                     )}
                     <div className="msg-body">
-                      {!mine && first && room.kind === "group" && <div className="sender">{m.sender}</div>}
+                      {!mine && first && room.kind === "group" && <div className="sender">{shownName(m.sender)}</div>}
                       <div className="bubble">{m.text}</div>
                       <div className="message-meta">
                         <span className="time">{formatTime(m.sentAt)}</span>
@@ -373,9 +398,9 @@ function ChatScreen({ chat, me }: { chat: ChatApi; me: string }) {
             </div>
             {isMember ? (
               <form className="composer" onSubmit={send}>
-                <XoInviteButton chat={chat} me={me} roomId={roomId} report={report} />
+                {!withAi && <XoInviteButton chat={chat} me={me} roomId={roomId} report={report} />}
                 <input
-                  placeholder="Type a message"
+                  placeholder={room.kind === "group" ? `Type a message, or start with @${AI_NAME} to ask ${AI_DISPLAY_NAME.split(" ")[0]}` : withAi ? `Ask ${AI_DISPLAY_NAME.split(" ")[0]} anything` : "Type a message"}
                   value={text}
                   maxLength={LIMITS.textMaxLength}
                   onChange={(e) => {

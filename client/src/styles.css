@@ -108,6 +108,8 @@ input:focus { border-color: var(--accent); }
 .item:hover, .item.active { background: var(--raised); }
 .item.active { box-shadow: inset 3px 0 0 var(--accent); }
 .item.self { cursor: default; }
+.ai-tag { flex-shrink: 0; padding: 2px 7px; border-radius: 999px; background: var(--raised); color: var(--accent); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; }
+
 .item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; font-weight: 600; }
 .count { font-size: 0.75rem; color: var(--muted); }
 .avatar { width: 40px; height: 40px; border-radius: 14px; background: var(--raised); border: 1px solid var(--border); color: var(--accent); display: grid; place-items: center; font-weight: 750; flex-shrink: 0; }

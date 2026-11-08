@@ -1,4 +1,5 @@
-import { groupRoomId } from "@chat/shared";
+import { groupRoomId, mentionsAi } from "@chat/shared";
+import { answerInRoom } from "../ai.js";
 import { sendGroupsList } from "../broadcast.js";
 import { addMember, createGroup, deleteGroup, findGroup, isMember } from "../repo/groups.js";
 import { saveMessage } from "../repo/messages.js";
@@ -111,6 +112,10 @@ export function registerGroupHandlers(io: ChatServer, socket: ChatSocket) {
       io.to(roomId).emit("message:new", message);
 
       ack({ ok: true, data: message });
+
+      // "@AI ..." asks the AI. It answers in the same room, so every member sees it, but it never
+      // becomes a member, so R8 and R9 stay as they are (Special Point).
+      if (mentionsAi(text)) void answerInRoom(io, roomId, { room: roomId });
     } catch (error) {
       console.error("[group:send]", error);
       ack({ ok: false, error: "SERVER_ERROR" });

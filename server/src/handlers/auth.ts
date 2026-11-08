@@ -1,4 +1,4 @@
-import { groupRoomId } from "@chat/shared";
+import { AI_NAME, groupRoomId } from "@chat/shared";
 import { sendAvatarsList, sendGroupsList, sendUsersList } from "../broadcast.js";
 import { hashPassword, verifyPassword } from "../password.js";
 import { createUser, findUser } from "../repo/users.js";
@@ -7,10 +7,14 @@ import { state } from "../state.js";
 import type { ChatServer, ChatSocket } from "../types.js";
 import { asRecord, INVALID_INPUT, isValidName, isValidPassword } from "../validate.js";
 
+const isAiName = (name: string) => name.toLowerCase() === AI_NAME.toLowerCase();
+
 export function registerAuthHandlers(io: ChatServer, socket: ChatSocket) {
   socket.on("auth:register", async (payload, ack) => {
     const { name, password } = asRecord(payload);
     if (!isValidName(name) || !isValidPassword(password)) return ack(INVALID_INPUT);
+    // The AI's name is kept for it in any case, so nobody can pass as "Ai" in a chat (R3).
+    if (isAiName(name)) return ack({ ok: false, error: "NAME_TAKEN" });
 
     try {
       const created = await createUser(name, await hashPassword(password));
@@ -25,6 +29,8 @@ export function registerAuthHandlers(io: ChatServer, socket: ChatSocket) {
     const { name, password } = asRecord(payload);
     if (!isValidName(name) || typeof password !== "string") return ack(INVALID_INPUT);
     if (socket.data.name) return ack({ ok: false, error: "ALREADY_ONLINE" });
+    // The AI's row has a password nobody knows; refuse the name too, so it can never log in.
+    if (isAiName(name)) return ack({ ok: false, error: "WRONG_CREDENTIALS" });
 
     try {
       const user = await findUser(name);

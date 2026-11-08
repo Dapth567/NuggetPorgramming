@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { Server } from "socket.io";
+import { ensureAiUser } from "./ai.js";
 import { registerAuthHandlers } from "./handlers/auth.js";
 import { registerDmHandlers } from "./handlers/dm.js";
 import { registerGameHandlers } from "./handlers/game.js";
@@ -14,6 +15,9 @@ export function createChatServer() {
 
   // WebSocket only: no HTTP long-polling, so every chat message travels over the socket (R2).
   const io: ChatServer = new Server(httpServer, { transports: ["websocket"] });
+
+  // The chat still works without the AI, so a failure here is only logged.
+  ensureAiUser().catch((error) => console.error("[ai] could not create the AI user", error));
 
   io.on("connection", (socket) => {
     console.log(`[connect] ${socket.id} from ${socket.handshake.address}`);
